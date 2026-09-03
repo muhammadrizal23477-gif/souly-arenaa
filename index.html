@@ -16,26 +16,26 @@
     --good: #34d399;
   }
   html[data-theme="dark"]{
-    --bg1:#0b1020; --bg2:#1b1440; --bg3:#0b3b4a; --bg4:#050810;
-    --glass-bg: rgba(255,255,255,0.08);
-    --glass-bg-strong: rgba(255,255,255,0.16);
-    --glass-border: rgba(255,255,255,0.16);
+    --bg1:#050510; --bg2:#0d0a24; --bg3:#0a2e42; --bg4:#020208;
+    --glass-bg: rgba(124,92,255,0.10);
+    --glass-bg-strong: rgba(139,110,255,0.20);
+    --glass-border: rgba(167,139,250,0.28);
     --text: #f4f6ff;
     --text-dim: rgba(244,246,255,0.62);
-    --shadow: 0 10px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.10);
+    --shadow: 0 10px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08);
     --input-bg: rgba(255,255,255,0.06);
-    --blob-opacity: .5;
+    --blob-opacity: .55;
   }
   html[data-theme="light"]{
-    --bg1:#eef2ff; --bg2:#dbeafe; --bg3:#cffafe; --bg4:#f5f3ff;
-    --glass-bg: rgba(255,255,255,0.55);
-    --glass-bg-strong: rgba(255,255,255,0.75);
-    --glass-border: rgba(15,23,42,0.10);
+    --bg1:#f3f5ff; --bg2:#eaf1ff; --bg3:#eef9ff; --bg4:#f7f6ff;
+    --glass-bg: rgba(255,255,255,0.70);
+    --glass-bg-strong: rgba(255,255,255,0.88);
+    --glass-border: rgba(99,102,241,0.14);
     --text: #0f172a;
-    --text-dim: rgba(15,23,42,0.60);
-    --shadow: 0 10px 34px rgba(30,41,59,0.14), inset 0 1px 0 rgba(255,255,255,0.6);
-    --input-bg: rgba(15,23,42,0.045);
-    --blob-opacity: .35;
+    --text-dim: rgba(15,23,42,0.55);
+    --shadow: 0 8px 26px rgba(99,102,241,0.10), inset 0 1px 0 rgba(255,255,255,0.7);
+    --input-bg: rgba(15,23,42,0.04);
+    --blob-opacity: .22;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;margin:0;}
@@ -127,14 +127,18 @@
 
   .card{ padding:16px; margin-bottom:14px; animation: fadeInUp .4s var(--ease); }
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .menu-card{ padding:22px 14px; text-align:center; cursor:pointer; animation: fadeInUp .45s var(--ease) backwards; }
+  .menu-card{ padding:22px 14px; text-align:center; cursor:pointer; animation: fadeInUp .45s var(--ease) backwards; border-color:var(--card-accent, var(--glass-border)) !important; }
   .menu-card:nth-child(1){ animation-delay:.02s; }
   .menu-card:nth-child(2){ animation-delay:.08s; }
   .menu-card:nth-child(3){ animation-delay:.14s; }
   .menu-card:nth-child(4){ animation-delay:.2s; }
   .menu-card:active{ transform:scale(0.96); }
-  .menu-card .ico{ display:flex; justify-content:center; margin-bottom:8px; color:var(--accent); filter:drop-shadow(0 4px 10px rgba(0,0,0,0.2)); }
+  .menu-card .ico{ display:flex; justify-content:center; margin-bottom:8px; color:var(--card-accent, var(--accent)); filter:drop-shadow(0 4px 10px rgba(0,0,0,0.2)); }
   .menu-card .lvl{ font-size:11px; color:var(--text-dim); margin-top:4px; }
+  .menu-card.mc-ttt{ --card-accent:#818cf8; }
+  .menu-card.mc-quiz{ --card-accent:#e879f9; }
+  .menu-card.mc-ai{ --card-accent:#38bdf8; }
+  .menu-card.mc-shop{ --card-accent:#fbbf24; }
 
   .xpbar-track{ height:10px; border-radius:999px; background:var(--input-bg); overflow:hidden; margin:6px 0 4px; position:relative; }
   .xpbar-fill{ height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:999px; transition: width .6s var(--ease); position:relative; overflow:hidden; }
@@ -213,6 +217,11 @@
   @keyframes spin{ to{ transform:rotate(360deg);} }
   .devcard p{ margin-bottom:6px; }
   .keyhint{ color:var(--gold); }
+  .admincard{ border-color:rgba(251,191,36,0.35) !important; }
+  .admincard h3{ color:var(--gold); }
+  .gift-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .gift-grid label{ font-size:11px; color:var(--text-dim); display:block; margin-bottom:4px; }
+  .gift-grid input{ margin-bottom:0; padding:10px; font-size:14px; text-align:center; }
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
@@ -240,6 +249,7 @@ const ICONS = {
   key:   '<circle cx="8" cy="15" r="4"/><path d="M10.5 12.5 20 3M16.5 6.5l3 3M13.5 9.5l2 2"/>',
   dev:   '<path d="M8 9 4 12l4 3M16 9l4 3-4 3M13.5 6 10.5 18"/>',
   logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+  camera:'<path d="M4 8h3l1.6-2h6.8L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="14" r="3.4"/>',
 };
 function icon(name, size){
   size = size || 20;
@@ -330,10 +340,13 @@ function newUser(username,password){
     tttLevel:1, tttWins:0, tttDifficulty:0,
     quizLevel:1, quizWins:0, quizDifficulty:0,
     usedQuizIds: [],
-    aiUsesDate: todayStr(), aiUsesToday:0,
+    aiUsesDate: todayStr(), aiUsesToday:0, aiLimitBonus:0,
     createdAt: Date.now()
   };
 }
+const ADMIN_USERNAME = 'souly';
+function isAdminUser(u){ return !!u && u.username === ADMIN_USERNAME; }
+function aiDailyLimit(u){ return AI_DAILY_BASE + (u.aiLimitBonus||0); }
 function avatarInitials(name){ return (name||'?').trim().slice(0,2).toUpperCase(); }
 function avatarSvg(user, size){
   size = size || 40;
@@ -342,6 +355,37 @@ function avatarSvg(user, size){
   return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">'+
     '<circle cx="20" cy="20" r="20" fill="'+color+'"/>'+
     '<text x="20" y="26" font-family="inherit" font-size="16" font-weight="800" fill="#0f172a" text-anchor="middle">'+initials+'</text></svg>';
+}
+/* Foto profil (dari galeri) jika ada, kalau tidak pakai avatar inisial berwarna */
+function avatarHtml(user, size){
+  size = size || 40;
+  if(user && user.avatarPhoto){
+    return '<img src="'+user.avatarPhoto+'" width="'+size+'" height="'+size+'" style="border-radius:50%;object-fit:cover;display:block;" alt="Foto profil">';
+  }
+  return avatarSvg(user, size);
+}
+/* Baca file gambar dari galeri, lalu perkecil ukurannya sebelum disimpan */
+function fileToResizedDataUrl(file, maxDim){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=> reject(new Error('Gagal membaca file'));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=> reject(new Error('File bukan gambar yang valid'));
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w >= h && w > maxDim){ h = Math.round(h*maxDim/w); w = maxDim; }
+        else if(h > w && h > maxDim){ w = Math.round(w*maxDim/h); h = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 const XP_BASE = 100, XP_STEP = 22, MAX_LEVEL = 99;
@@ -531,8 +575,7 @@ function renderAuth(){
         <button class="btn-primary" id="authBtn">Masuk</button>
         <div class="link" id="switchLink">Belum punya akun? Daftar</div>
       </div>
-      <p style="text-align:center;margin-top:14px;">Akun disimpan di penyimpanan aplikasi ini (bersama saat dijalankan di Claude, atau di browser ini saat di-deploy sendiri).</p>
-      <p id="storageNote" class="keyhint" style="text-align:center;"></p>
+      <p id="storageNote" class="keyhint" style="text-align:center;margin-top:14px;"></p>
     </div>
   </div>`;
   if(!storageOK){
@@ -567,6 +610,7 @@ function renderAuth(){
         const ok = await saveUser(u);
         if(!ok){ err.textContent = 'Gagal menyimpan akun, coba lagi.'; btn.disabled=false; btn.textContent='Daftar'; return; }
         CURRENT = u;
+        VIEW = 'home';
         showToast('Akun berhasil dibuat!','ok');
         render();
       } else {
@@ -577,6 +621,7 @@ function renderAuth(){
         if(u.quizDifficulty === undefined) u.quizDifficulty = 0;
         if(u.avatarColor === undefined) u.avatarColor = AVATAR_COLORS[0];
         CURRENT = u;
+        VIEW = 'home';
         resetAiDailyIfNeeded();
         showToast('Selamat datang, '+u.username+'!','ok');
         render();
@@ -602,7 +647,7 @@ function renderShell(){
   appEl.innerHTML = `
     <div class="topbar glass" style="margin:10px 10px 0;">
       <div style="display:flex;align-items:center;gap:10px;">
-        <div class="avatar">${avatarSvg(CURRENT,38)}</div>
+        <div class="avatar">${avatarHtml(CURRENT,38)}</div>
         <div>
           <div style="font-weight:800;font-size:14px;">${CURRENT.username}</div>
           <div class="small">Level ${CURRENT.level}</div>
@@ -662,22 +707,22 @@ function renderHome(c){
       <p style="margin-top:6px;">Menangkan game untuk naik level hingga 99.</p>
     </div>
     <div class="grid2">
-      <div class="glass menu-card" id="goTtt">
+      <div class="glass menu-card mc-ttt" id="goTtt">
         <div class="ico">${icon('ttt',30)}</div>
         <div style="font-weight:700;">Tic-Tac-Toe</div>
         <div class="lvl">Mode: ${DIFFICULTIES[CURRENT.tttDifficulty||0].label}</div>
       </div>
-      <div class="glass menu-card" id="goQuiz">
+      <div class="glass menu-card mc-quiz" id="goQuiz">
         <div class="ico">${icon('quiz',30)}</div>
         <div style="font-weight:700;">Quiz</div>
         <div class="lvl">Mode: ${DIFFICULTIES[CURRENT.quizDifficulty||0].label}</div>
       </div>
-      <div class="glass menu-card" id="goAi">
+      <div class="glass menu-card mc-ai" id="goAi">
         <div class="ico">${icon('ai',30)}</div>
         <div style="font-weight:700;">Chat AI</div>
         <div class="lvl">${aiRemaining()} sisa hari ini</div>
       </div>
-      <div class="glass menu-card" id="goShop">
+      <div class="glass menu-card mc-shop" id="goShop">
         <div class="ico">${icon('bulb',30)}</div>
         <div style="font-weight:700;">Beli Idea</div>
         <div class="lvl">${BULB_COST} koin / lampu</div>
@@ -694,9 +739,14 @@ function renderHome(c){
 function renderProfile(c){
   c.innerHTML = `
     <div class="glass card" style="text-align:center;">
-      <div style="display:flex;justify-content:center;margin-bottom:10px;">${avatarSvg(CURRENT,72)}</div>
+      <div style="position:relative;display:inline-flex;margin-bottom:10px;">
+        <div class="avatar" style="width:72px;height:72px;">${avatarHtml(CURRENT,72)}</div>
+        <button class="theme-toggle" id="pickPhotoBtn" title="Ganti foto profil" style="position:absolute;bottom:-4px;right:-4px;width:28px;height:28px;">${icon('camera',14)}</button>
+      </div>
+      <input type="file" accept="image/*" id="photoInput" class="hidden">
       <h2>${CURRENT.username}</h2>
       <p>Bergabung ${new Date(CURRENT.createdAt).toLocaleDateString('id-ID')}</p>
+      ${CURRENT.avatarPhoto ? '<div class="link" id="removePhoto">Hapus foto profil</div>' : '<div class="small">Ketuk ikon kamera untuk pilih foto dari galeri</div>'}
     </div>
     <div class="glass card">
       <div class="row"><span>Level</span><b>${CURRENT.level} / ${MAX_LEVEL}</b></div>
@@ -716,10 +766,26 @@ function renderProfile(c){
       <div class="row"><h3>Pengaturan AI</h3><span style="color:var(--good);">${icon('key',18)}</span></div>
       <p>Chat AI sudah aktif otomatis untuk semua orang. Tidak perlu memasukkan API key apa pun — cukup buka menu Chat AI dan mulai mengobrol.</p>
     </div>
+    ${isAdminUser(CURRENT) ? `
+    <div class="glass card admincard">
+      <div class="row"><h3>Kirim Gift (Admin)</h3><span style="color:var(--gold);">${icon('gem',18)}</span></div>
+      <p>Kirim koin, lampu Idea, atau tambahan limit AI ke akun pengguna lain. Perubahan langsung tersimpan ke akun tujuan.</p>
+      <input id="giftTarget" placeholder="Username tujuan" autocomplete="off">
+      <div class="gift-grid" style="margin-bottom:12px;">
+        <div><label>Koin</label><input id="giftCoins" type="number" value="0" min="0"></div>
+        <div><label>Lampu Idea</label><input id="giftBulbs" type="number" value="0" min="0"></div>
+        <div><label>Limit AI</label><input id="giftAi" type="number" value="0" min="0"></div>
+      </div>
+      <div class="err" id="giftErr"></div>
+      <button class="btn-primary" id="giftBtn">Kirim Gift</button>
+    </div>` : ''}
     <div class="glass card devcard">
       <div class="row"><h3>Info Developer</h3><span style="color:var(--accent);">${icon('dev',18)}</span></div>
       <p>Souly Arena — aplikasi mini yang menggabungkan game Tic-Tac-Toe, Quiz, dan Chat AI dalam satu tempat.</p>
-      <div class="row"><span>Versi</span><b>1.2.0</b></div>
+      <div class="row"><span>Nama Developer</span><b>Muhammad Rizal Febiansyah</b></div>
+      <div class="row"><span>Umur</span><b>16 tahun</b></div>
+      <div class="row"><span>Kontak Dev</span><b>6283131826265</b></div>
+      <div class="row"><span>Versi</span><b>1.3.0</b></div>
       <div class="row"><span>Dibangun dengan</span><b>HTML, CSS, JavaScript, Node.js</b></div>
       <div class="row"><span>Sumber AI</span><b>Terpasang di server, gratis untuk semua pengguna</b></div>
     </div>
@@ -733,9 +799,73 @@ function renderProfile(c){
       VIEW='profile'; renderContent();
     };
   });
+  document.getElementById('pickPhotoBtn').onclick = ()=> document.getElementById('photoInput').click();
+  document.getElementById('photoInput').onchange = async (e)=>{
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if(!file) return;
+    if(!file.type || !file.type.startsWith('image/')){ showToast('Pilih file gambar ya', 'err'); return; }
+    try{
+      const dataUrl = await fileToResizedDataUrl(file, 256);
+      CURRENT.avatarPhoto = dataUrl;
+      await saveUser(CURRENT);
+      showToast('Foto profil diperbarui', 'ok');
+      renderShell();
+      VIEW='profile'; renderContent();
+    }catch(err){
+      showToast('Gagal memproses gambar: ' + (err && err.message ? err.message : 'tidak diketahui'), 'err');
+    }
+  };
+  const removeBtn = document.getElementById('removePhoto');
+  if(removeBtn){
+    removeBtn.onclick = async ()=>{
+      CURRENT.avatarPhoto = null;
+      await saveUser(CURRENT);
+      showToast('Foto profil dihapus', 'ok');
+      renderShell();
+      VIEW='profile'; renderContent();
+    };
+  }
   document.getElementById('logoutBtn').onclick = ()=>{
     CURRENT = null; VIEW='login'; chatHistory=[]; render();
   };
+  const giftBtn = document.getElementById('giftBtn');
+  if(giftBtn){
+    giftBtn.onclick = async ()=>{
+      const giftErr = document.getElementById('giftErr');
+      giftErr.textContent = '';
+      const targetName = document.getElementById('giftTarget').value.trim().toLowerCase();
+      const coins = Math.max(0, parseInt(document.getElementById('giftCoins').value, 10) || 0);
+      const bulbs = Math.max(0, parseInt(document.getElementById('giftBulbs').value, 10) || 0);
+      const aiLimit = Math.max(0, parseInt(document.getElementById('giftAi').value, 10) || 0);
+      if(!targetName){ giftErr.textContent = 'Isi username tujuan.'; return; }
+      if(coins===0 && bulbs===0 && aiLimit===0){ giftErr.textContent = 'Isi minimal satu jumlah gift.'; return; }
+      giftBtn.disabled = true; giftBtn.innerHTML = '<span class="spinner"></span>';
+      try{
+        const target = await getUser(targetName);
+        if(!target){ giftErr.textContent = 'Pengguna "'+targetName+'" tidak ditemukan.'; return; }
+        target.coins = (target.coins||0) + coins;
+        target.bulbs = (target.bulbs||0) + bulbs;
+        target.aiLimitBonus = (target.aiLimitBonus||0) + aiLimit;
+        const ok = await saveUser(target);
+        if(!ok){ giftErr.textContent = 'Gagal menyimpan gift, coba lagi.'; return; }
+        if(target.username === CURRENT.username){
+          CURRENT = target;
+          refreshTopbar();
+        }
+        showToast('Gift terkirim ke '+target.username+'!', 'ok');
+        document.getElementById('giftTarget').value = '';
+        document.getElementById('giftCoins').value = '0';
+        document.getElementById('giftBulbs').value = '0';
+        document.getElementById('giftAi').value = '0';
+      }catch(e){
+        console.error(e);
+        giftErr.textContent = 'Terjadi kesalahan: ' + (e && e.message ? e.message : 'tidak diketahui');
+      }finally{
+        giftBtn.disabled = false; giftBtn.textContent = 'Kirim Gift';
+      }
+    };
+  }
 }
 
 /* ---------- SELECTOR MODE TANTANGAN (pill meluncur) ---------- */
@@ -852,6 +982,11 @@ function renderQuiz(c){
       ${renderDiffBar('quizDiffBar','quizDiffPill', CURRENT.quizDifficulty||0)}
       <p style="font-size:16px;color:var(--text);font-weight:600;margin-top:10px;">${quizQ.q}</p>
       <div id="opts" style="margin-top:12px;"></div>
+      <div class="row" style="margin-top:12px;">
+        <span class="small" id="aiHintInfo">${quizAiHintLabel()}</span>
+        <button class="btn-small btn-ghost" id="askAiQuiz">${icon('ai',14)} Tanya AI</button>
+      </div>
+      <div id="quizAiHint"></div>
     </div>
   `;
   wireDiffBar('quizDiffBar','quizDiffPill', async (i)=>{
@@ -868,6 +1003,37 @@ function renderQuiz(c){
     b.onclick = ()=> answerQuiz(idx, b, opts);
     opts.appendChild(b);
   });
+  const askBtn = document.getElementById('askAiQuiz');
+  askBtn.onclick = ()=> askAiForQuiz(quizQ, document.getElementById('quizAiHint'), askBtn);
+}
+function quizAiHintLabel(){
+  const remaining = aiRemaining();
+  if(remaining > 0) return icon('bulb',14) + ' ' + remaining + ' AI gratis hari ini';
+  if(CURRENT.bulbs > 0) return icon('bulb',14) + ' ' + CURRENT.bulbs + ' lampu Idea';
+  return icon('bulb',14) + ' Limit AI habis';
+}
+async function askAiForQuiz(q, box, btn){
+  resetAiDailyIfNeeded();
+  const remaining = aiRemaining();
+  if(remaining <= 0 && CURRENT.bulbs <= 0){
+    showToast('Limit AI habis. Beli lampu Idea di Shop!', 'err');
+    return;
+  }
+  if(btn) btn.disabled = true;
+  box.innerHTML = `<div class="bubble ai" style="margin-top:8px;"><span class="spinner"></span></div>`;
+  if(remaining > 0){ CURRENT.aiUsesToday++; } else { CURRENT.bulbs--; }
+  await saveUser(CURRENT);
+  refreshTopbar();
+  const info = document.getElementById('aiHintInfo');
+  if(info) info.innerHTML = quizAiHintLabel();
+  try{
+    const prompt = 'Bantu aku menjawab soal quiz pilihan ganda berikut. Sebutkan jawaban yang paling tepat lalu jelaskan alasannya singkat (maks 2-3 kalimat).\nSoal: ' + q.q + '\nPilihan: ' + q.o.map((o,i)=> String.fromCharCode(65+i)+'. '+o).join(', ');
+    const reply = await callAI(prompt, []);
+    box.innerHTML = `<div class="bubble ai" style="margin-top:8px;">${formatMessage(reply)}</div>`;
+  }catch(e){
+    box.innerHTML = `<div class="bubble ai" style="margin-top:8px;">Gagal minta bantuan AI: ${escapeHtml(e && e.message ? e.message : 'tidak diketahui')}</div>`;
+    if(btn) btn.disabled = false;
+  }
 }
 async function answerQuiz(idx, btn, opts){
   if(quizAnswered) return;
@@ -902,11 +1068,11 @@ async function answerQuiz(idx, btn, opts){
 /* ---------- AI CHAT ---------- */
 function aiRemaining(){
   resetAiDailyIfNeeded();
-  return Math.max(0, AI_DAILY_BASE - CURRENT.aiUsesToday);
+  return Math.max(0, aiDailyLimit(CURRENT) - CURRENT.aiUsesToday);
 }
 function renderAI(c){
   resetAiDailyIfNeeded();
-  const remaining = Math.max(0, AI_DAILY_BASE - CURRENT.aiUsesToday);
+  const remaining = Math.max(0, aiDailyLimit(CURRENT) - CURRENT.aiUsesToday);
   c.innerHTML = `
     <div class="glass card">
       <div class="row"><h3>Chat AI</h3><span class="small">${remaining} pesan gratis hari ini</span></div>
@@ -968,7 +1134,7 @@ async function sendChat(input, log){
   const text = input.value.trim();
   if(!text) return;
   resetAiDailyIfNeeded();
-  const remaining = Math.max(0, AI_DAILY_BASE - CURRENT.aiUsesToday);
+  const remaining = Math.max(0, aiDailyLimit(CURRENT) - CURRENT.aiUsesToday);
   if(remaining <= 0 && CURRENT.bulbs <= 0){
     showToast('Limit AI habis. Beli lampu Idea di Shop!', 'err');
     return;
@@ -989,7 +1155,7 @@ async function sendChat(input, log){
   refreshTopbar();
   if(VIEW==='ai'){
     const remainEl = document.querySelector('#content .small');
-    if(remainEl) remainEl.textContent = `${Math.max(0,AI_DAILY_BASE-CURRENT.aiUsesToday)} pesan gratis hari ini`;
+    if(remainEl) remainEl.textContent = `${Math.max(0,aiDailyLimit(CURRENT)-CURRENT.aiUsesToday)} pesan gratis hari ini`;
   }
 
   try{
