@@ -182,6 +182,10 @@
   .bubble{ padding:10px 13px; border-radius:16px; max-width:82%; font-size:14px; line-height:1.4; animation: fadeInUp .25s var(--ease); }
   .bubble.me{ align-self:flex-end; background:linear-gradient(90deg,var(--accent),var(--accent2)); color:#0f172a; font-weight:600;}
   .bubble.ai{ align-self:flex-start; background:var(--input-bg); border:1px solid var(--glass-border); }
+  .bubble .katex-display{ overflow-x:auto; overflow-y:hidden; margin:6px 0; }
+  .bubble .katex{ font-size:1em; }
+  .bubble ul{ margin:4px 0; padding-left:20px; }
+  .bubble li{ margin:2px 0; }
   .chatrow{ display:flex; gap:8px; margin-top:10px; }
   .chatrow input{ margin:0; flex:1; }
 
@@ -205,6 +209,8 @@
   .devcard p{ margin-bottom:6px; }
   .keyhint{ color:var(--gold); }
 </style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 </head>
 <body>
 <div class="blob blob1"></div><div class="blob blob2"></div><div class="blob blob3"></div>
@@ -908,7 +914,7 @@ function renderAI(c){
     </div>
   `;
   const log = document.getElementById('chatlog');
-  log.innerHTML = chatHistory.map(m=>`<div class="bubble ${m.role==='user'?'me':'ai'}">${escapeHtml(m.content)}</div>`).join('');
+  log.innerHTML = chatHistory.map(m=>`<div class="bubble ${m.role==='user'?'me':'ai'}">${m.role==='user'?escapeHtml(m.content):formatMessage(m.content)}</div>`).join('');
   log.scrollTop = log.scrollHeight;
   const input = document.getElementById('chatInput');
   const send = document.getElementById('sendBtn');
@@ -916,6 +922,43 @@ function renderAI(c){
   input.onkeydown = (e)=>{ if(e.key==='Enter') sendChat(input, log); };
 }
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+/* Render balasan AI: escape dulu supaya aman dari HTML, lalu ubah LaTeX (\[..\], \(..\), $$..$$, $..$)
+   jadi rumus rapi lewat KaTeX, dan markdown ringan (**tebal**, list "- ") jadi HTML. */
+function renderMathSafe(tex, display){
+  try{
+    if(window.katex){
+      return katex.renderToString(tex.trim(), { throwOnError:false, displayMode: !!display });
+    }
+  }catch(e){}
+  return escapeHtml(display ? ('\\[' + tex + '\\]') : ('\\(' + tex + '\\)'));
+}
+function formatMessage(raw){
+  if(!raw) return '';
+  const store = [];
+  const stash = (html)=>{ store.push(html); return '\u0000M' + (store.length-1) + '\u0000'; };
+
+  let text = String(raw);
+  // Rumus mode "display": $$..$$ dan \[..\]
+  text = text.replace(/\$\$([\s\S]+?)\$\$/g, (m, tex)=> stash(renderMathSafe(tex, true)));
+  text = text.replace(/\\\[([\s\S]+?)\\\]/g, (m, tex)=> stash(renderMathSafe(tex, true)));
+  // Rumus mode "inline": \(..\) dan $..$
+  text = text.replace(/\\\(([\s\S]+?)\\\)/g, (m, tex)=> stash(renderMathSafe(tex, false)));
+  text = text.replace(/(^|[^$])\$([^$\n]+?)\$(?!\$)/g, (m, pre, tex)=> pre + stash(renderMathSafe(tex, false)));
+
+  // Sisanya di-escape supaya aman
+  text = escapeHtml(text);
+
+  // Markdown ringan
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  text = text.replace(/(?:^|\n)- (.+)/g, '\n<li>$1</li>');
+  text = text.replace(/(<li>[\s\S]*<\/li>)/, '<ul>$1</ul>');
+  text = text.replace(/\n/g, '<br>');
+
+  // Kembalikan rumus yang sudah dirender
+  text = text.replace(/\u0000M(\d+)\u0000/g, (m, i)=> store[Number(i)]);
+  return text;
+}
 async function sendChat(input, log){
   const text = input.value.trim();
   if(!text) return;
@@ -947,7 +990,7 @@ async function sendChat(input, log){
   try{
     const reply = await callAI(text, chatHistory.slice(0,-1));
     chatHistory.push({role:'assistant', content:reply});
-    typingEl.textContent = reply;
+    typingEl.innerHTML = formatMessage(reply);
   }catch(e){
     typingEl.textContent = 'Maaf, terjadi kendala menghubungi AI: ' + (e && e.message ? e.message : 'tidak diketahui');
   }
