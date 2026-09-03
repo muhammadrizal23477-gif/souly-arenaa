@@ -149,6 +149,11 @@
     position:fixed; bottom:14px; left:50%; transform:translateX(-50%); width:min(440px,92%);
     display:grid; grid-template-columns:repeat(6,1fr); padding:8px 6px; z-index:10;
     animation: fadeInUp .4s var(--ease);
+    border-radius:var(--radius-lg);
+    border:1px solid var(--glass-border);
+    box-shadow:var(--shadow);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
   }
   .nav-pill{ position:absolute; top:6px; bottom:6px; left:0; border-radius:14px; background:var(--glass-bg-strong); box-shadow:0 4px 14px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.12); z-index:0; transition: transform .45s var(--ease), width .45s var(--ease); pointer-events:none; }
   .navbtn{ position:relative; z-index:1; background:none; border:none; color:var(--text-dim); font-size:10.5px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 4px; border-radius:12px; transition: color .2s var(--ease), transform .15s var(--ease); }
