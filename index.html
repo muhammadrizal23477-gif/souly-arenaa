@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Souly Arena</title>
+<style>
+  :root{
+    --radius-lg: 22px;
+    --radius-md: 14px;
+    --ease: cubic-bezier(.22,1,.36,1);
+    --accent: #6ee7ff;
+    --accent2: #a78bfa;
+    --gold: #fbbf24;
+    --danger: #fb7185;
+    --good: #34d399;
+  }
+  html[data-theme="dark"]{
+    --bg1:#0b1020; --bg2:#1b1440; --bg3:#0b3b4a; --bg4:#050810;
+    --glass-bg: rgba(255,255,255,0.08);
+    --glass-bg-strong: rgba(255,255,255,0.16);
+    --glass-border: rgba(255,255,255,0.16);
+    --text: #f4f6ff;
+    --text-dim: rgba(244,246,255,0.62);
+    --shadow: 0 10px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.10);
+    --input-bg: rgba(255,255,255,0.06);
+    --blob-opacity: .5;
+  }
+  html[data-theme="light"]{
+    --bg1:#eef2ff; --bg2:#dbeafe; --bg3:#cffafe; --bg4:#f5f3ff;
+    --glass-bg: rgba(255,255,255,0.55);
+    --glass-bg-strong: rgba(255,255,255,0.75);
+    --glass-border: rgba(15,23,42,0.10);
+    --text: #0f172a;
+    --text-dim: rgba(15,23,42,0.60);
+    --shadow: 0 10px 34px rgba(30,41,59,0.14), inset 0 1px 0 rgba(255,255,255,0.6);
+    --input-bg: rgba(15,23,42,0.045);
+    --blob-opacity: .35;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--text);
+    min-height:100vh;
+    overflow-x:hidden;
+    background: linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 35%,var(--bg3) 70%,var(--bg4) 100%);
+    background-size:200% 200%;
+    animation: bgshift 22s ease infinite;
+    position:relative;
+    transition: color .35s var(--ease);
+  }
+  @keyframes bgshift{
+    0%,100%{background-position:0% 50%;}
+    50%{background-position:100% 50%;}
+  }
+  .blob{
+    position:fixed; border-radius:50%; filter:blur(70px); opacity:var(--blob-opacity); z-index:0;
+    animation: float 18s ease-in-out infinite;
+    transition: opacity .35s var(--ease);
+  }
+  .blob1{width:360px;height:360px; background:var(--accent2); top:-90px; left:-90px;}
+  .blob2{width:320px;height:320px; background:var(--accent); bottom:-70px; right:-70px; animation-delay:-6s;}
+  .blob3{width:280px;height:280px; background:#f472b6; top:38%; left:58%; animation-delay:-12s;}
+  @keyframes float{
+    0%,100%{transform:translate(0,0) scale(1);}
+    50%{transform:translate(34px,-34px) scale(1.1);}
+  }
+  .app{position:relative; z-index:1; max-width:480px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+
+  @keyframes fadeInUp{ from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+  @keyframes popIn{ from{opacity:0; transform:scale(.7);} to{opacity:1; transform:scale(1);} }
+
+  .glass{
+    background:var(--glass-bg);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border:1px solid var(--glass-border);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);
+    transition: background .35s var(--ease), border-color .35s var(--ease), box-shadow .35s var(--ease), transform .18s var(--ease);
+  }
+  .glass-strong{ background:var(--glass-bg-strong); }
+  .screen{ padding:20px 16px 90px; flex:1; animation: fadeIn .35s var(--ease); }
+  h1,h2,h3{margin:0 0 8px; letter-spacing:-0.01em;}
+  p{margin:0 0 8px; color:var(--text-dim); font-size:14px; line-height:1.5;}
+  .center{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;}
+  .logo{ display:flex; justify-content:center; margin-bottom:6px; color:var(--accent); animation: popIn .5s var(--ease); }
+  .brand{ text-align:center; font-size:25px; font-weight:800; letter-spacing:0.5px; margin-bottom:2px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .tagline{text-align:center; margin-bottom:22px;}
+  input{
+    width:100%; padding:13px 14px; margin-bottom:12px; border-radius:var(--radius-md);
+    border:1px solid var(--glass-border); background:var(--input-bg); color:var(--text);
+    font-size:15px; outline:none; transition:border-color .2s var(--ease), background .3s var(--ease), box-shadow .2s var(--ease);
+  }
+  input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(110,231,255,0.18); }
+  input::placeholder{color:var(--text-dim);}
+  select{
+    width:100%; padding:13px 14px; margin-bottom:12px; border-radius:var(--radius-md);
+    border:1px solid var(--glass-border); background:var(--input-bg); color:var(--text);
+    font-size:14px; outline:none;
+  }
+  button{
+    cursor:pointer; border:none; border-radius:var(--radius-md); font-weight:700; font-size:15px;
+    padding:13px 16px; color:#0f172a; transition:transform .15s var(--ease), opacity .12s ease, box-shadow .2s var(--ease), filter .2s ease;
+  }
+  button:active{transform:scale(0.95);}
+  button:disabled{opacity:.45; cursor:not-allowed;}
+  .btn-primary{ width:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); box-shadow:0 6px 20px rgba(110,231,255,0.25); display:flex; align-items:center; justify-content:center; gap:8px; }
+  .btn-primary:hover{ filter:brightness(1.06); }
+  .btn-ghost{ width:100%; background:transparent; color:var(--text); border:1px solid var(--glass-border); display:flex; align-items:center; justify-content:center; gap:8px; }
+  .btn-small{ padding:8px 14px; font-size:13px; }
+  .link{ text-align:center; margin-top:10px; color:var(--accent); font-size:14px; cursor:pointer; font-weight:600; }
+  .err{ color:var(--danger); font-size:13px; margin:-4px 0 10px; min-height:16px; animation: fadeIn .2s ease; }
+  .msg{ color:var(--good); font-size:13px; margin:-4px 0 10px; min-height:16px; }
+
+  .topbar{ position:sticky; top:0; z-index:5; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; animation: fadeInUp .4s var(--ease); }
+  .avatar{ width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--glass-bg-strong); box-shadow:0 2px 8px rgba(0,0,0,0.15); flex-shrink:0; }
+  .avatar svg{ display:block; }
+  .hstat{ display:flex; gap:8px; align-items:center; font-size:13px; font-weight:700;}
+  .pill{ display:flex; align-items:center; gap:5px; padding:6px 10px; border-radius:999px; transition: transform .2s var(--ease); color:var(--text); }
+  .pill.bump{ animation: bump .35s var(--ease); }
+  @keyframes bump{ 0%{transform:scale(1);} 40%{transform:scale(1.25);} 100%{transform:scale(1);} }
+  .theme-toggle{ width:34px; height:34px; border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center; background:var(--glass-bg-strong); color:var(--text); border:1px solid var(--glass-border); }
+
+  .card{ padding:16px; margin-bottom:14px; animation: fadeInUp .4s var(--ease); }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .menu-card{ padding:22px 14px; text-align:center; cursor:pointer; animation: fadeInUp .45s var(--ease) backwards; }
+  .menu-card:nth-child(1){ animation-delay:.02s; }
+  .menu-card:nth-child(2){ animation-delay:.08s; }
+  .menu-card:nth-child(3){ animation-delay:.14s; }
+  .menu-card:nth-child(4){ animation-delay:.2s; }
+  .menu-card:active{ transform:scale(0.96); }
+  .menu-card .ico{ display:flex; justify-content:center; margin-bottom:8px; color:var(--accent); filter:drop-shadow(0 4px 10px rgba(0,0,0,0.2)); }
+  .menu-card .lvl{ font-size:11px; color:var(--text-dim); margin-top:4px; }
+
+  .xpbar-track{ height:10px; border-radius:999px; background:var(--input-bg); overflow:hidden; margin:6px 0 4px; position:relative; }
+  .xpbar-fill{ height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:999px; transition: width .6s var(--ease); position:relative; overflow:hidden; }
+  .xpbar-fill::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+    width:40%; animation: shimmer 2s linear infinite;
+  }
+  @keyframes shimmer{ 0%{transform:translateX(-120%);} 100%{transform:translateX(320%);} }
+
+  .bottomnav{
+    position:fixed; bottom:14px; left:50%; transform:translateX(-50%); width:min(440px,92%);
+    display:grid; grid-template-columns:repeat(6,1fr); padding:8px 6px; z-index:10;
+    animation: fadeInUp .4s var(--ease);
+  }
+  .nav-pill{ position:absolute; top:6px; bottom:6px; left:0; border-radius:14px; background:var(--glass-bg-strong); box-shadow:0 4px 14px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.12); z-index:0; transition: transform .45s var(--ease), width .45s var(--ease); pointer-events:none; }
+  .navbtn{ position:relative; z-index:1; background:none; border:none; color:var(--text-dim); font-size:10.5px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 4px; border-radius:12px; transition: color .2s var(--ease), transform .15s var(--ease); }
+  .navbtn.active{ color:var(--text); transform:translateY(-2px); }
+  .navbtn .ni{ display:flex; transition: transform .2s var(--ease); }
+  .navbtn.active .ni{ transform:scale(1.12); }
+
+  /* Pill selector meluncur (dipakai untuk mode tantangan) */
+  .pillbar{ position:relative; display:grid; background:var(--input-bg); border-radius:999px; padding:4px; margin:10px 0 4px; }
+  .pillbar-pill{ position:absolute; top:4px; bottom:4px; left:0; border-radius:999px; background:linear-gradient(90deg,var(--accent),var(--accent2)); z-index:0; box-shadow:0 4px 14px rgba(110,231,255,.25); transition: transform .4s var(--ease), width .4s var(--ease); }
+  .pillbar-btn{ position:relative; z-index:1; background:none; border:none; padding:9px 4px; font-size:12px; font-weight:700; color:var(--text-dim); border-radius:999px; transition:color .25s var(--ease); }
+  .pillbar-btn.active{ color:#0f172a; }
+
+  .board{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:14px 0; }
+  .cell{ aspect-ratio:1; border-radius:var(--radius-md); background:var(--input-bg); border:1px solid var(--glass-border);
+    display:flex; align-items:center; justify-content:center; font-size:34px; font-weight:800; cursor:pointer;
+    transition: background .2s var(--ease), transform .15s var(--ease); }
+  .cell:hover{ background:var(--glass-bg-strong); }
+  .cell.x, .cell.o{ animation: popIn .25s var(--ease); }
+  .cell.x{ color:var(--accent); }
+  .cell.o{ color:#f472b6; }
+  .cell:active{ transform:scale(0.93); }
+
+  .qopt{ width:100%; text-align:left; margin-bottom:10px; background:var(--input-bg); color:var(--text); border:1px solid var(--glass-border); animation: fadeInUp .3s var(--ease) backwards; }
+  .qopt:nth-child(1){animation-delay:0s;} .qopt:nth-child(2){animation-delay:.05s;} .qopt:nth-child(3){animation-delay:.1s;} .qopt:nth-child(4){animation-delay:.15s;}
+  .qopt.correct{ background:rgba(52,211,153,0.3); border-color:var(--good); animation:popIn .3s var(--ease); }
+  .qopt.wrong{ background:rgba(251,113,133,0.3); border-color:var(--danger); animation:shake .35s var(--ease); }
+  @keyframes shake{ 0%,100%{transform:translateX(0);} 25%{transform:translateX(-5px);} 75%{transform:translateX(5px);} }
+
+  .chatlog{ height:46vh; overflow-y:auto; padding:6px 2px; display:flex; flex-direction:column; gap:8px; }
+  .bubble{ padding:10px 13px; border-radius:16px; max-width:82%; font-size:14px; line-height:1.4; animation: fadeInUp .25s var(--ease); }
+  .bubble.me{ align-self:flex-end; background:linear-gradient(90deg,var(--accent),var(--accent2)); color:#0f172a; font-weight:600;}
+  .bubble.ai{ align-self:flex-start; background:var(--input-bg); border:1px solid var(--glass-border); }
+  .chatrow{ display:flex; gap:8px; margin-top:10px; }
+  .chatrow input{ margin:0; flex:1; }
+
+  .shopitem{ display:flex; align-items:center; justify-content:space-between; padding:14px; margin-bottom:10px; animation: fadeInUp .4s var(--ease); transition: transform .18s var(--ease); }
+  .shopitem:hover{ transform:translateY(-2px); }
+  .toast{
+    position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-14px); z-index:50; padding:11px 20px;
+    border-radius:14px; font-size:13px; font-weight:700; opacity:0; pointer-events:none;
+    transition:opacity .3s var(--ease), transform .3s var(--ease); box-shadow:0 10px 30px rgba(0,0,0,0.25);
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(10px); }
+  .hidden{ display:none !important; }
+  .small{ font-size:12px; color:var(--text-dim); }
+  .row{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .swatch-pick{ display:flex; flex-wrap:wrap; gap:10px; margin:10px 0; }
+  .swatch{ width:34px; height:34px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition: transform .15s var(--ease), border-color .15s var(--ease); }
+  .swatch:hover{ transform:scale(1.1); }
+  .swatch.sel{ border-color:var(--text); transform:scale(1.15); }
+  .spinner{ width:16px;height:16px;border-radius:50%;border:2px solid rgba(120,120,120,0.3); border-top-color:currentColor; animation:spin .7s linear infinite; display:inline-block;}
+  @keyframes spin{ to{ transform:rotate(360deg);} }
+  .devcard p{ margin-bottom:6px; }
+  .keyhint{ color:var(--gold); }
+</style>
+</head>
+<body>
+<div class="blob blob1"></div><div class="blob blob2"></div><div class="blob blob3"></div>
+<div id="toast" class="toast glass-strong"></div>
+<div class="app" id="app"></div>
+
+<script>
+/* ===================== IKON (SVG, tanpa emoji) ===================== */
+const ICONS = {
+  home:  '<path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V9.5Z"/>',
+  ttt:   '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  quiz:  '<circle cx="12" cy="12" r="9"/><path d="M9.3 9.2a2.7 2.7 0 1 1 3.8 2.5c-1 .4-1.6 1.1-1.6 2.3"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/>',
+  ai:    '<path d="M4 5h16v11H9l-4 4V5Z"/><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="17" cy="10" r="1" fill="currentColor" stroke="none"/>',
+  shop:  '<path d="M6 8V6a6 6 0 0 1 12 0v2"/><rect x="3" y="8" width="18" height="13" rx="2"/>',
+  profile: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  sun:   '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon:  '<path d="M20 14.6A8.5 8.5 0 1 1 9.4 4a7 7 0 0 0 10.6 10.6Z"/>',
+  coin:  '<circle cx="12" cy="12" r="9"/><path d="M9 15.4c.5.8 1.5 1.2 3 1.2s2.6-.6 2.6-1.6-1-1.4-2.6-1.7-2.6-.7-2.6-1.7S10.5 10 12 10s2.5.4 3 1.2M12 8.2v1.5M12 14.3v1.5"/>',
+  bulb:  '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5.9 1.2.9 2.1h5.2c0-.9.3-1.6.9-2.1A6 6 0 0 0 12 3Z"/>',
+  gem:   '<path d="M6 3h12l4 6-10 12L2 9Z"/><path d="M2 9h20M9 3l3 6 3-6M9 9l3 12 3-12"/>',
+  send:  '<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/>',
+  key:   '<circle cx="8" cy="15" r="4"/><path d="M10.5 12.5 20 3M16.5 6.5l3 3M13.5 9.5l2 2"/>',
+  dev:   '<path d="M8 9 4 12l4 3M16 9l4 3-4 3M13.5 6 10.5 18"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+};
+function icon(name, size){
+  size = size || 20;
+  return '<svg class="ico-svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[name]||'')+'</svg>';
+}
+
+/* ===================== TEMA (dark / light) ===================== */
+let THEME = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', THEME);
+}
+function toggleTheme(){
+  THEME = THEME === 'dark' ? 'light' : 'dark';
+  applyTheme();
+  document.querySelectorAll('.theme-toggle').forEach(b=> b.innerHTML = icon(THEME==='dark'?'sun':'moon',16));
+}
+applyTheme();
+
+/* ===================== STORAGE / DATA LAYER =====================
+   Rantai penyimpanan: window.storage (tersedia saat dijalankan di
+   dalam Claude, dapat dipakai bersama) -> localStorage (dipakai saat
+   di-deploy mandiri, misalnya di Render, per-browser) -> memori
+   sementara (cadangan terakhir kalau semuanya gagal / diblokir).
+   Ini membuat aplikasi tetap berjalan normal baik di preview Claude
+   maupun setelah di-deploy sebagai situs statis biasa. */
+const memoryStore = {};
+let storageOK = true;
+function lsAvailable(){
+  try{ const k='__souly_test__'; localStorage.setItem(k,'1'); localStorage.removeItem(k); return true; }
+  catch(e){ return false; }
+}
+const LS_OK = lsAvailable();
+const LS_PREFIX = 'soulyarena:';
+
+async function storeGet(key, shared){
+  if(typeof window.storage !== 'undefined'){
+    try{
+      const r = await window.storage.get(key, shared);
+      if(r && typeof r.value === 'string') return r.value;
+      return null;
+    }catch(e){
+      const msg = (e && e.message) || '';
+      if(/not found|does not exist|no such/i.test(msg)) return null;
+      console.warn('[storage] window.storage gagal, coba sumber lain:', e);
+    }
+  }
+  if(LS_OK){
+    const raw = localStorage.getItem(LS_PREFIX+key);
+    if(raw !== null) return raw;
+  }
+  return Object.prototype.hasOwnProperty.call(memoryStore,key) ? memoryStore[key] : null;
+}
+async function storeSet(key, value, shared){
+  memoryStore[key] = value;
+  let persisted = false;
+  if(typeof window.storage !== 'undefined'){
+    try{ const r = await window.storage.set(key, value, shared); if(r) persisted = true; }
+    catch(e){ console.warn('[storage] window.storage set gagal:', e); }
+  }
+  if(LS_OK){
+    try{ localStorage.setItem(LS_PREFIX+key, value); persisted = true; }
+    catch(e){ console.warn('[storage] localStorage set gagal:', e); }
+  }
+  storageOK = persisted;
+  return true;
+}
+
+async function getUser(username){
+  const raw = await storeGet('users:'+username, true);
+  if(!raw) return null;
+  try{ return JSON.parse(raw); }catch(e){ return null; }
+}
+async function saveUser(u){
+  return await storeSet('users:'+u.username, JSON.stringify(u), true);
+}
+async function ensureAdmin(){
+  const existing = await getUser('souly');
+  if(!existing){
+    await saveUser(newUser('souly','souly123'));
+  }
+}
+const AVATAR_COLORS = ['#6ee7ff','#a78bfa','#f472b6','#fbbf24','#34d399','#fb7185','#38bdf8','#c084fc'];
+function newUser(username,password){
+  return {
+    username, password,
+    avatarColor: AVATAR_COLORS[Math.floor(Math.random()*AVATAR_COLORS.length)],
+    level:1, xp:0, coins:20, bulbs:1,
+    tttLevel:1, tttWins:0, tttDifficulty:0,
+    quizLevel:1, quizWins:0, quizDifficulty:0,
+    usedQuizIds: [],
+    aiUsesDate: todayStr(), aiUsesToday:0,
+    createdAt: Date.now()
+  };
+}
+function avatarInitials(name){ return (name||'?').trim().slice(0,2).toUpperCase(); }
+function avatarSvg(user, size){
+  size = size || 40;
+  const color = user.avatarColor || AVATAR_COLORS[0];
+  const initials = avatarInitials(user.username);
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">'+
+    '<circle cx="20" cy="20" r="20" fill="'+color+'"/>'+
+    '<text x="20" y="26" font-family="inherit" font-size="16" font-weight="800" fill="#0f172a" text-anchor="middle">'+initials+'</text></svg>';
+}
+
+const XP_BASE = 100, XP_STEP = 22, MAX_LEVEL = 99;
+const AI_DAILY_BASE = 5;
+const BULB_COST = 30;
+const DIFFICULTIES = [
+  {key:'easy', label:'Mudah'},
+  {key:'medium', label:'Sedang'},
+  {key:'hard', label:'Sulit'},
+  {key:'expert', label:'Ahli'},
+];
+
+function xpNeeded(level){ return XP_BASE + (level-1)*XP_STEP; }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+function showToast(text, kind){
+  const t = document.getElementById('toast');
+  t.textContent = text;
+  t.style.background = kind==='err' ? 'rgba(251,113,133,0.92)' : kind==='gold' ? 'rgba(251,191,36,0.95)' : 'rgba(52,211,153,0.92)';
+  t.style.color = '#0f172a';
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+let CURRENT = null; // sesi pengguna aktif di memori (tidak ikut ter-reset localStorage/window.storage milik akun)
+
+async function addRewards(coins, xp){
+  CURRENT.coins += coins;
+  CURRENT.xp += xp;
+  let leveledUp = false;
+  while(CURRENT.level < MAX_LEVEL && CURRENT.xp >= xpNeeded(CURRENT.level)){
+    CURRENT.xp -= xpNeeded(CURRENT.level);
+    CURRENT.level++;
+    leveledUp = true;
+  }
+  if(CURRENT.level >= MAX_LEVEL){ CURRENT.xp = Math.min(CURRENT.xp, xpNeeded(MAX_LEVEL)-1); }
+  await saveUser(CURRENT);
+  return leveledUp;
+}
+
+/* ===================== PILL SELECTOR MELUNCUR (animasi liquid glass) ===================== */
+function movePill(containerEl, pillEl, activeSelector){
+  if(!containerEl || !pillEl) return;
+  const active = containerEl.querySelector(activeSelector);
+  if(!active) return;
+  const cRect = containerEl.getBoundingClientRect();
+  const aRect = active.getBoundingClientRect();
+  pillEl.style.width = aRect.width + 'px';
+  pillEl.style.transform = 'translateX(' + (aRect.left - cRect.left) + 'px)';
+}
+let navResizeBound = false;
+function ensureNavResizeListener(){
+  if(navResizeBound) return;
+  navResizeBound = true;
+  window.addEventListener('resize', ()=>{
+    requestAnimationFrame(()=>{
+      movePill(document.getElementById('bottomnav'), document.getElementById('navPill'), '.navbtn.active');
+    });
+  });
+}
+
+/* ===================== QUIZ BANK ===================== */
+const QUIZ_BANK = [
+  {id:1,d:1,q:"Ibu kota Indonesia adalah?",o:["Jakarta","Bandung","Surabaya","Medan"],a:0},
+  {id:2,d:1,q:"2 + 2 x 2 =",o:["8","6","4","2"],a:1},
+  {id:3,d:1,q:"Planet terdekat dengan matahari?",o:["Venus","Bumi","Merkurius","Mars"],a:2},
+  {id:4,d:1,q:"Warna bendera Indonesia?",o:["Merah-Putih","Merah-Biru","Putih-Biru","Kuning-Merah"],a:0},
+  {id:5,d:2,q:"Penemu lampu pijar?",o:["Newton","Edison","Einstein","Tesla"],a:1},
+  {id:6,d:2,q:"Ibu kota Jepang?",o:["Kyoto","Osaka","Tokyo","Nagoya"],a:2},
+  {id:7,d:2,q:"Hasil dari 12 x 12?",o:["144","124","134","154"],a:0},
+  {id:8,d:2,q:"Gas yang dibutuhkan manusia untuk bernapas?",o:["CO2","Oksigen","Nitrogen","Helium"],a:1},
+  {id:9,d:2,q:"Benua terbesar di dunia?",o:["Afrika","Eropa","Asia","Amerika"],a:2},
+  {id:10,d:2,q:"Bahasa pemrograman untuk web front-end?",o:["Python","JavaScript","C++","Java"],a:1},
+  {id:11,d:3,q:"Penulis novel 'Laskar Pelangi'?",o:["Andrea Hirata","Pramoedya","Tere Liye","Dee Lestari"],a:0},
+  {id:12,d:3,q:"Rumus kimia air?",o:["CO2","O2","H2O","NaCl"],a:2},
+  {id:13,d:3,q:"Negara dengan penduduk terbanyak di dunia?",o:["India","Cina","AS","Indonesia"],a:0},
+  {id:14,d:3,q:"1 abad = berapa tahun?",o:["10","100","1000","50"],a:1},
+  {id:15,d:3,q:"Mata uang Jepang?",o:["Won","Yuan","Yen","Ringgit"],a:2},
+  {id:16,d:4,q:"Siapa proklamator kemerdekaan Indonesia?",o:["Soekarno-Hatta","Soeharto","Sudirman","Habibie"],a:0},
+  {id:17,d:4,q:"Organ tubuh yang memompa darah?",o:["Paru-paru","Jantung","Ginjal","Hati"],a:1},
+  {id:18,d:4,q:"Akar kuadrat dari 144?",o:["11","13","12","14"],a:2},
+  {id:19,d:4,q:"Samudra terluas di dunia?",o:["Atlantik","Hindia","Pasifik","Arktik"],a:2},
+  {id:20,d:4,q:"Bahasa resmi PBB tidak termasuk?",o:["Inggris","Mandarin","Jerman","Arab"],a:2},
+];
+
+function pickQuizQuestion(){
+  const used = CURRENT.usedQuizIds || [];
+  const targetD = (CURRENT.quizDifficulty||0) + 1; // 0..3 -> 1..4
+  let pool = QUIZ_BANK.filter(q => !used.includes(q.id) && q.d === targetD);
+  if(pool.length === 0) pool = QUIZ_BANK.filter(q => !used.includes(q.id));
+  if(pool.length === 0){
+    CURRENT.usedQuizIds = [];
+    pool = QUIZ_BANK.filter(q => q.d === targetD);
+    if(pool.length === 0) pool = QUIZ_BANK.slice();
+  }
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+/* ===================== TIC TAC TOE AI ===================== */
+function tttWinner(b){
+  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for(const [a,b1,c] of lines){ if(b[a] && b[a]===b[b1] && b[a]===b[c]) return b[a]; }
+  if(b.every(x=>x)) return 'draw';
+  return null;
+}
+function minimax(b, isAI, depth){
+  const w = tttWinner(b);
+  if(w==='O') return {score: 10-depth};
+  if(w==='X') return {score: depth-10};
+  if(w==='draw') return {score:0};
+  const moves = [];
+  for(let i=0;i<9;i++){
+    if(!b[i]){
+      const nb = b.slice(); nb[i] = isAI ? 'O' : 'X';
+      const res = minimax(nb, !isAI, depth+1);
+      moves.push({idx:i, score:res.score});
+    }
+  }
+  if(isAI){
+    return moves.reduce((best,m)=> m.score>best.score?m:best, {score:-Infinity, idx:moves[0].idx});
+  } else {
+    return moves.reduce((best,m)=> m.score<best.score?m:best, {score:Infinity, idx:moves[0].idx});
+  }
+}
+const TTT_RANDOM_BY_DIFF = [0.6, 0.35, 0.15, 0]; // Mudah..Ahli: makin kecil, makin jarang AI asal-asalan
+function aiMove(board, difficulty){
+  const empty = board.map((v,i)=>v?null:i).filter(v=>v!==null);
+  const randomChance = TTT_RANDOM_BY_DIFF[difficulty] ?? 0.3;
+  if(Math.random() < randomChance){
+    return empty[Math.floor(Math.random()*empty.length)];
+  }
+  const best = minimax(board.slice(), true, 0);
+  return best.idx;
+}
+
+/* ===================== AI CHAT (lewat backend sendiri, tanpa API key di sisi pengguna) ===================== */
+async function callAI(userText, history){
+  const messages = [
+    ...history.map(h => ({role:h.role, content:h.content})),
+    {role:'user', content:userText}
+  ];
+  const res = await fetch("/api/chat", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ messages })
+  });
+  if(!res.ok){
+    let detail = 'HTTP ' + res.status;
+    try{ const errData = await res.json(); if(errData && errData.error) detail = errData.error; }catch(e){}
+    throw new Error(detail);
+  }
+  const data = await res.json();
+  const text = data.reply || '';
+  return (text || '(tidak ada respons)').trim();
+}
+
+/* ===================== RENDER APP ===================== */
+const appEl = document.getElementById('app');
+let VIEW = 'login';
+let chatHistory = [];
+
+function render(){
+  if(!CURRENT){ renderAuth(); return; }
+  renderShell();
+}
+
+async function boot(){
+  await ensureAdmin();
+  render();
+}
+
+/* ---------- AUTH ---------- */
+function renderAuth(){
+  appEl.innerHTML = `
+  <div class="center">
+    <div style="width:100%;max-width:360px;position:relative;">
+      <button class="theme-toggle" id="themeBtn" style="position:absolute;top:-6px;right:0;">${icon(THEME==='dark'?'sun':'moon',16)}</button>
+      <div class="logo">${icon('gem',40)}</div>
+      <div class="brand">SOULY ARENA</div>
+      <div class="tagline">Main, kumpulkan XP, naik level.</div>
+      <div class="glass card">
+        <div id="authTitle" style="font-weight:800;font-size:18px;margin-bottom:14px;">Masuk</div>
+        <input id="u" placeholder="Username" autocomplete="username">
+        <input id="p" type="password" placeholder="Password" autocomplete="current-password">
+        <div class="err" id="authErr"></div>
+        <button class="btn-primary" id="authBtn">Masuk</button>
+        <div class="link" id="switchLink">Belum punya akun? Daftar</div>
+      </div>
+      <p style="text-align:center;margin-top:14px;">Akun disimpan di penyimpanan aplikasi ini (bersama saat dijalankan di Claude, atau di browser ini saat di-deploy sendiri).</p>
+      <p id="storageNote" class="keyhint" style="text-align:center;"></p>
+    </div>
+  </div>`;
+  if(!storageOK){
+    document.getElementById('storageNote').textContent = 'Catatan: penyimpanan permanen tidak terdeteksi saat ini, jadi akun hanya tersimpan selama sesi ini berlangsung.';
+  }
+  let mode = 'login';
+  document.getElementById('themeBtn').onclick = toggleTheme;
+  const title = document.getElementById('authTitle');
+  const btn = document.getElementById('authBtn');
+  const switchLink = document.getElementById('switchLink');
+  const err = document.getElementById('authErr');
+
+  switchLink.onclick = ()=>{
+    mode = mode==='login' ? 'register' : 'login';
+    title.textContent = mode==='login' ? 'Masuk' : 'Daftar Akun';
+    btn.textContent = mode==='login' ? 'Masuk' : 'Daftar';
+    switchLink.textContent = mode==='login' ? 'Belum punya akun? Daftar' : 'Sudah punya akun? Masuk';
+    err.textContent = '';
+  };
+
+  btn.onclick = async ()=>{
+    const username = document.getElementById('u').value.trim().toLowerCase();
+    const password = document.getElementById('p').value.trim();
+    err.textContent = '';
+    if(!username || !password){ err.textContent = 'Isi username dan password.'; return; }
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+    try{
+      if(mode === 'register'){
+        const exist = await getUser(username);
+        if(exist){ err.textContent = 'Username sudah dipakai.'; btn.disabled=false; btn.textContent='Daftar'; return; }
+        const u = newUser(username, password);
+        const ok = await saveUser(u);
+        if(!ok){ err.textContent = 'Gagal menyimpan akun, coba lagi.'; btn.disabled=false; btn.textContent='Daftar'; return; }
+        CURRENT = u;
+        showToast('Akun berhasil dibuat!','ok');
+        render();
+      } else {
+        const u = await getUser(username);
+        if(!u){ err.textContent = 'Akun tidak ditemukan. Cek username, atau daftar dulu.'; btn.disabled=false; btn.textContent='Masuk'; return; }
+        if(u.password !== password){ err.textContent = 'Password salah.'; btn.disabled=false; btn.textContent='Masuk'; return; }
+        if(u.tttDifficulty === undefined) u.tttDifficulty = 0;
+        if(u.quizDifficulty === undefined) u.quizDifficulty = 0;
+        if(u.avatarColor === undefined) u.avatarColor = AVATAR_COLORS[0];
+        CURRENT = u;
+        resetAiDailyIfNeeded();
+        showToast('Selamat datang, '+u.username+'!','ok');
+        render();
+      }
+    }catch(e){
+      console.error(e);
+      err.textContent = 'Terjadi kesalahan: ' + (e && e.message ? e.message : 'tidak diketahui');
+      btn.disabled=false; btn.textContent = mode==='login'?'Masuk':'Daftar';
+    }
+  };
+}
+
+function resetAiDailyIfNeeded(){
+  if(CURRENT.aiUsesDate !== todayStr()){
+    CURRENT.aiUsesDate = todayStr();
+    CURRENT.aiUsesToday = 0;
+    saveUser(CURRENT);
+  }
+}
+
+/* ---------- SHELL ---------- */
+function renderShell(){
+  appEl.innerHTML = `
+    <div class="topbar glass" style="margin:10px 10px 0;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="avatar">${avatarSvg(CURRENT,38)}</div>
+        <div>
+          <div style="font-weight:800;font-size:14px;">${CURRENT.username}</div>
+          <div class="small">Level ${CURRENT.level}</div>
+        </div>
+      </div>
+      <div class="hstat">
+        <div class="pill glass-strong" id="coinPill">${icon('coin',14)}<span id="coinVal">${CURRENT.coins}</span></div>
+        <div class="pill glass-strong" id="bulbPill">${icon('bulb',14)}<span id="bulbVal">${CURRENT.bulbs}</span></div>
+        <button class="theme-toggle" id="themeBtnShell">${icon(THEME==='dark'?'sun':'moon',16)}</button>
+      </div>
+    </div>
+    <div id="content" class="screen"></div>
+    <div class="bottomnav glass-strong" id="bottomnav">
+      <div class="nav-pill" id="navPill"></div>
+      <button class="navbtn" data-v="home"><span class="ni">${icon('home',18)}</span>Home</button>
+      <button class="navbtn" data-v="ttt"><span class="ni">${icon('ttt',18)}</span>TTT</button>
+      <button class="navbtn" data-v="quiz"><span class="ni">${icon('quiz',18)}</span>Quiz</button>
+      <button class="navbtn" data-v="ai"><span class="ni">${icon('ai',18)}</span>AI</button>
+      <button class="navbtn" data-v="shop"><span class="ni">${icon('shop',18)}</span>Shop</button>
+      <button class="navbtn" data-v="profile"><span class="ni">${icon('profile',18)}</span>Profil</button>
+    </div>
+  `;
+  document.querySelectorAll('.navbtn').forEach(b=>{
+    b.onclick = ()=>{ VIEW = b.dataset.v; renderContent(); };
+  });
+  document.getElementById('themeBtnShell').onclick = toggleTheme;
+  ensureNavResizeListener();
+  renderContent();
+}
+
+function setActiveNav(){
+  document.querySelectorAll('.navbtn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.v===VIEW);
+  });
+  requestAnimationFrame(()=> movePill(document.getElementById('bottomnav'), document.getElementById('navPill'), '.navbtn.active'));
+}
+
+function renderContent(){
+  setActiveNav();
+  const c = document.getElementById('content');
+  if(VIEW==='home') return renderHome(c);
+  if(VIEW==='ttt') return renderTTT(c);
+  if(VIEW==='quiz') return renderQuiz(c);
+  if(VIEW==='ai') return renderAI(c);
+  if(VIEW==='shop') return renderShop(c);
+  if(VIEW==='profile') return renderProfile(c);
+}
+
+/* ---------- HOME ---------- */
+function renderHome(c){
+  const need = xpNeeded(CURRENT.level);
+  const pct = CURRENT.level>=MAX_LEVEL ? 100 : Math.min(100, Math.round(CURRENT.xp/need*100));
+  c.innerHTML = `
+    <div class="glass card">
+      <div class="row"><h3>Level ${CURRENT.level}</h3><span class="small">${CURRENT.level>=MAX_LEVEL?'MAX':(CURRENT.xp+'/'+need+' XP')}</span></div>
+      <div class="xpbar-track"><div class="xpbar-fill" style="width:${pct}%"></div></div>
+      <p style="margin-top:6px;">Menangkan game untuk naik level hingga 99.</p>
+    </div>
+    <div class="grid2">
+      <div class="glass menu-card" id="goTtt">
+        <div class="ico">${icon('ttt',30)}</div>
+        <div style="font-weight:700;">Tic-Tac-Toe</div>
+        <div class="lvl">Mode: ${DIFFICULTIES[CURRENT.tttDifficulty||0].label}</div>
+      </div>
+      <div class="glass menu-card" id="goQuiz">
+        <div class="ico">${icon('quiz',30)}</div>
+        <div style="font-weight:700;">Quiz</div>
+        <div class="lvl">Mode: ${DIFFICULTIES[CURRENT.quizDifficulty||0].label}</div>
+      </div>
+      <div class="glass menu-card" id="goAi">
+        <div class="ico">${icon('ai',30)}</div>
+        <div style="font-weight:700;">Chat AI</div>
+        <div class="lvl">${aiRemaining()} sisa hari ini</div>
+      </div>
+      <div class="glass menu-card" id="goShop">
+        <div class="ico">${icon('bulb',30)}</div>
+        <div style="font-weight:700;">Beli Idea</div>
+        <div class="lvl">${BULB_COST} koin / lampu</div>
+      </div>
+    </div>
+  `;
+  document.getElementById('goTtt').onclick = ()=>{VIEW='ttt';renderContent();};
+  document.getElementById('goQuiz').onclick = ()=>{VIEW='quiz';renderContent();};
+  document.getElementById('goAi').onclick = ()=>{VIEW='ai';renderContent();};
+  document.getElementById('goShop').onclick = ()=>{VIEW='shop';renderContent();};
+}
+
+/* ---------- PROFILE (termasuk Info Developer & Pengaturan AI) ---------- */
+function renderProfile(c){
+  c.innerHTML = `
+    <div class="glass card" style="text-align:center;">
+      <div style="display:flex;justify-content:center;margin-bottom:10px;">${avatarSvg(CURRENT,72)}</div>
+      <h2>${CURRENT.username}</h2>
+      <p>Bergabung ${new Date(CURRENT.createdAt).toLocaleDateString('id-ID')}</p>
+    </div>
+    <div class="glass card">
+      <div class="row"><span>Level</span><b>${CURRENT.level} / ${MAX_LEVEL}</b></div>
+      <div class="row"><span>XP</span><b>${CURRENT.xp} / ${xpNeeded(CURRENT.level)}</b></div>
+      <div class="row"><span>Koin</span><b>${CURRENT.coins}</b></div>
+      <div class="row"><span>Lampu Idea</span><b>${CURRENT.bulbs}</b></div>
+      <div class="row"><span>Level Tic-Tac-Toe</span><b>${CURRENT.tttLevel} (${CURRENT.tttWins} menang)</b></div>
+      <div class="row"><span>Level Quiz</span><b>${CURRENT.quizLevel} (${CURRENT.quizWins} menang)</b></div>
+    </div>
+    <div class="glass card">
+      <h3>Warna Avatar</h3>
+      <div class="swatch-pick" id="avPick">
+        ${AVATAR_COLORS.map(cl=>`<span data-c="${cl}" class="swatch ${cl===CURRENT.avatarColor?'sel':''}" style="background:${cl};"></span>`).join('')}
+      </div>
+    </div>
+    <div class="glass card">
+      <div class="row"><h3>Pengaturan AI</h3><span style="color:var(--good);">${icon('key',18)}</span></div>
+      <p>Chat AI sudah aktif otomatis untuk semua orang. Tidak perlu memasukkan API key apa pun — cukup buka menu Chat AI dan mulai mengobrol.</p>
+    </div>
+    <div class="glass card devcard">
+      <div class="row"><h3>Info Developer</h3><span style="color:var(--accent);">${icon('dev',18)}</span></div>
+      <p>Souly Arena — aplikasi mini yang menggabungkan game Tic-Tac-Toe, Quiz, dan Chat AI dalam satu tempat.</p>
+      <div class="row"><span>Versi</span><b>1.2.0</b></div>
+      <div class="row"><span>Dibangun dengan</span><b>HTML, CSS, JavaScript, Node.js</b></div>
+      <div class="row"><span>Sumber AI</span><b>Terpasang di server, gratis untuk semua pengguna</b></div>
+    </div>
+    <button class="btn-ghost" id="logoutBtn">${icon('logout',16)}Keluar</button>
+  `;
+  document.getElementById('avPick').querySelectorAll('.swatch').forEach(s=>{
+    s.onclick = async ()=>{
+      CURRENT.avatarColor = s.dataset.c;
+      await saveUser(CURRENT);
+      renderShell();
+      VIEW='profile'; renderContent();
+    };
+  });
+  document.getElementById('logoutBtn').onclick = ()=>{
+    CURRENT = null; VIEW='login'; chatHistory=[]; render();
+  };
+}
+
+/* ---------- SELECTOR MODE TANTANGAN (pill meluncur) ---------- */
+function renderDiffBar(containerId, pillId, currentIndex, onPick){
+  return `
+    <div class="pillbar" id="${containerId}" style="grid-template-columns:repeat(${DIFFICULTIES.length},1fr);">
+      <div class="pillbar-pill" id="${pillId}"></div>
+      ${DIFFICULTIES.map((d,i)=>`<button class="pillbar-btn ${i===currentIndex?'active':''}" data-i="${i}">${d.label}</button>`).join('')}
+    </div>
+  `;
+}
+function wireDiffBar(containerId, pillId, onPick){
+  const bar = document.getElementById(containerId);
+  const pill = document.getElementById(pillId);
+  bar.querySelectorAll('.pillbar-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      bar.querySelectorAll('.pillbar-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      requestAnimationFrame(()=> movePill(bar, pill, '.pillbar-btn.active'));
+      onPick(parseInt(btn.dataset.i));
+    };
+  });
+  requestAnimationFrame(()=> movePill(bar, pill, '.pillbar-btn.active'));
+}
+
+/* ---------- TIC TAC TOE ---------- */
+let tttBoard, tttTurn, tttOver;
+function newTttGame(){
+  tttBoard = Array(9).fill(null);
+  tttTurn = 'X'; tttOver = false;
+}
+function renderTTT(c){
+  if(!tttBoard) newTttGame();
+  c.innerHTML = `
+    <div class="glass card">
+      <div class="row"><h3>Tic-Tac-Toe</h3><span class="small">Level ${CURRENT.tttLevel}</span></div>
+      <p>Kamu (X) vs AI (O). Menang = XP + koin. Makin sulit mode, makin besar hadiahnya.</p>
+      <div class="small">Mode tantangan</div>
+      ${renderDiffBar('tttDiffBar','tttDiffPill', CURRENT.tttDifficulty||0)}
+      <div class="board" id="board"></div>
+      <div id="tttStatus" class="row"><span class="small" id="tttMsg">Giliranmu</span><button class="btn-small btn-ghost" id="resetTtt">Main Lagi</button></div>
+    </div>
+  `;
+  wireDiffBar('tttDiffBar','tttDiffPill', async (i)=>{
+    if(CURRENT.tttDifficulty === i) return;
+    CURRENT.tttDifficulty = i;
+    await saveUser(CURRENT);
+    newTttGame();
+    drawBoard();
+    document.getElementById('tttMsg').textContent = 'Giliranmu';
+  });
+  drawBoard();
+  document.getElementById('resetTtt').onclick = ()=>{ newTttGame(); drawBoard(); };
+}
+function drawBoard(){
+  const b = document.getElementById('board');
+  if(!b) return;
+  b.innerHTML = tttBoard.map((v,i)=>`<div class="cell ${v==='X'?'x':v==='O'?'o':''}" data-i="${i}">${v||''}</div>`).join('');
+  b.querySelectorAll('.cell').forEach(cell=>{
+    cell.onclick = ()=> onCellClick(parseInt(cell.dataset.i));
+  });
+}
+async function onCellClick(i){
+  if(tttOver || tttBoard[i] || tttTurn!=='X') return;
+  tttBoard[i] = 'X';
+  drawBoard();
+  let w = tttWinner(tttBoard);
+  if(w){ return finishTtt(w); }
+  tttTurn = 'O';
+  document.getElementById('tttMsg').textContent = 'AI berpikir...';
+  setTimeout(async ()=>{
+    const move = aiMove(tttBoard, CURRENT.tttDifficulty||0);
+    tttBoard[move] = 'O';
+    drawBoard();
+    w = tttWinner(tttBoard);
+    if(w){ return finishTtt(w); }
+    tttTurn = 'X';
+    document.getElementById('tttMsg').textContent = 'Giliranmu';
+  }, 450);
+}
+async function finishTtt(w){
+  tttOver = true;
+  const msgEl = document.getElementById('tttMsg');
+  const diff = CURRENT.tttDifficulty || 0;
+  if(w==='X'){
+    const xpGain = 15 + CURRENT.tttLevel*3 + diff*8;
+    const coinGain = 10 + CURRENT.tttLevel*2 + diff*5;
+    CURRENT.tttWins++;
+    if(CURRENT.tttWins % 3 === 0) CURRENT.tttLevel = Math.min(CURRENT.tttLevel+1, 50);
+    const leveled = await addRewards(coinGain, xpGain);
+    msgEl.textContent = `Menang! +${xpGain} XP, +${coinGain} koin`;
+    showToast(`Menang! +${xpGain} XP, +${coinGain} koin`, 'ok');
+    if(leveled) showToast(`Naik ke Level ${CURRENT.level}!`, 'gold');
+    refreshTopbar();
+  } else if(w==='O'){
+    msgEl.textContent = 'AI menang. Coba lagi!';
+    await saveUser(CURRENT);
+  } else {
+    msgEl.textContent = 'Seri!';
+    await addRewards(2, 5);
+    refreshTopbar();
+  }
+}
+
+/* ---------- QUIZ ---------- */
+let quizQ = null, quizStreak = 0, quizAnswered = false;
+function renderQuiz(c){
+  quizQ = pickQuizQuestion();
+  quizAnswered = false;
+  c.innerHTML = `
+    <div class="glass card">
+      <div class="row"><h3>Quiz</h3><span class="small">Level ${CURRENT.quizLevel} · Beruntun: ${quizStreak}</span></div>
+      <div class="small">Mode tantangan</div>
+      ${renderDiffBar('quizDiffBar','quizDiffPill', CURRENT.quizDifficulty||0)}
+      <p style="font-size:16px;color:var(--text);font-weight:600;margin-top:10px;">${quizQ.q}</p>
+      <div id="opts" style="margin-top:12px;"></div>
+    </div>
+  `;
+  wireDiffBar('quizDiffBar','quizDiffPill', async (i)=>{
+    if(CURRENT.quizDifficulty === i) return;
+    CURRENT.quizDifficulty = i;
+    await saveUser(CURRENT);
+    renderQuiz(document.getElementById('content'));
+  });
+  const opts = document.getElementById('opts');
+  quizQ.o.forEach((optText, idx)=>{
+    const b = document.createElement('button');
+    b.className = 'qopt';
+    b.textContent = optText;
+    b.onclick = ()=> answerQuiz(idx, b, opts);
+    opts.appendChild(b);
+  });
+}
+async function answerQuiz(idx, btn, opts){
+  if(quizAnswered) return;
+  quizAnswered = true;
+  CURRENT.usedQuizIds = CURRENT.usedQuizIds || [];
+  CURRENT.usedQuizIds.push(quizQ.id);
+  const correct = idx === quizQ.a;
+  const diff = CURRENT.quizDifficulty || 0;
+  Array.from(opts.children).forEach((el,i)=>{
+    if(i===quizQ.a) el.classList.add('correct');
+    else if(i===idx) el.classList.add('wrong');
+    el.disabled = true;
+  });
+  if(correct){
+    quizStreak++;
+    const xpGain = 8 + quizQ.d*4 + CURRENT.quizLevel + diff*3;
+    const coinGain = 4 + quizQ.d*2 + diff*2;
+    CURRENT.quizWins++;
+    if(CURRENT.quizWins % 5 === 0) CURRENT.quizLevel = Math.min(CURRENT.quizLevel+1, 50);
+    const leveled = await addRewards(coinGain, xpGain);
+    showToast(`Benar! +${xpGain} XP, +${coinGain} koin`, 'ok');
+    if(leveled) showToast(`Naik ke Level ${CURRENT.level}!`, 'gold');
+  } else {
+    quizStreak = 0;
+    await saveUser(CURRENT);
+    showToast('Kurang tepat, coba lagi ya', 'err');
+  }
+  refreshTopbar();
+  setTimeout(()=>{ if(VIEW==='quiz') renderContent(); }, 1100);
+}
+
+/* ---------- AI CHAT ---------- */
+function aiRemaining(){
+  resetAiDailyIfNeeded();
+  return Math.max(0, AI_DAILY_BASE - CURRENT.aiUsesToday);
+}
+function renderAI(c){
+  resetAiDailyIfNeeded();
+  const remaining = Math.max(0, AI_DAILY_BASE - CURRENT.aiUsesToday);
+  c.innerHTML = `
+    <div class="glass card">
+      <div class="row"><h3>Chat AI</h3><span class="small">${remaining} pesan gratis hari ini</span></div>
+      <div class="chatlog" id="chatlog"></div>
+      <div class="chatrow">
+        <input id="chatInput" placeholder="Tulis pesan..." />
+        <button class="btn-primary" style="width:auto;" id="sendBtn">${icon('send',16)}</button>
+      </div>
+      <p style="margin-top:8px;">Kehabisan limit? Beli lampu Idea di Shop untuk pesan tambahan.</p>
+    </div>
+  `;
+  const log = document.getElementById('chatlog');
+  log.innerHTML = chatHistory.map(m=>`<div class="bubble ${m.role==='user'?'me':'ai'}">${escapeHtml(m.content)}</div>`).join('');
+  log.scrollTop = log.scrollHeight;
+  const input = document.getElementById('chatInput');
+  const send = document.getElementById('sendBtn');
+  send.onclick = ()=> sendChat(input, log);
+  input.onkeydown = (e)=>{ if(e.key==='Enter') sendChat(input, log); };
+}
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+async function sendChat(input, log){
+  const text = input.value.trim();
+  if(!text) return;
+  resetAiDailyIfNeeded();
+  const remaining = Math.max(0, AI_DAILY_BASE - CURRENT.aiUsesToday);
+  if(remaining <= 0 && CURRENT.bulbs <= 0){
+    showToast('Limit AI habis. Beli lampu Idea di Shop!', 'err');
+    return;
+  }
+  input.value='';
+  chatHistory.push({role:'user', content:text});
+  log.innerHTML += `<div class="bubble me">${escapeHtml(text)}</div>`;
+  log.scrollTop = log.scrollHeight;
+  const typingEl = document.createElement('div');
+  typingEl.className = 'bubble ai';
+  typingEl.innerHTML = '<span class="spinner"></span>';
+  log.appendChild(typingEl);
+  log.scrollTop = log.scrollHeight;
+
+  if(remaining > 0){ CURRENT.aiUsesToday++; }
+  else { CURRENT.bulbs--; }
+  await saveUser(CURRENT);
+  refreshTopbar();
+  if(VIEW==='ai'){
+    const remainEl = document.querySelector('#content .small');
+    if(remainEl) remainEl.textContent = `${Math.max(0,AI_DAILY_BASE-CURRENT.aiUsesToday)} pesan gratis hari ini`;
+  }
+
+  try{
+    const reply = await callAI(text, chatHistory.slice(0,-1));
+    chatHistory.push({role:'assistant', content:reply});
+    typingEl.textContent = reply;
+  }catch(e){
+    typingEl.textContent = 'Maaf, terjadi kendala menghubungi AI: ' + (e && e.message ? e.message : 'tidak diketahui');
+  }
+  log.scrollTop = log.scrollHeight;
+}
+
+/* ---------- SHOP ---------- */
+function renderShop(c){
+  c.innerHTML = `
+    <div class="glass card">
+      <h3>Shop</h3>
+      <p>Gunakan koin hasil menang game untuk membeli item.</p>
+    </div>
+    <div class="glass shopitem">
+      <div style="display:flex;gap:12px;align-items:center;">
+        <div style="color:var(--accent);">${icon('bulb',28)}</div>
+        <div>
+          <div style="font-weight:700;">Idea Bulb</div>
+          <div class="small">+1 pesan AI ekstra</div>
+        </div>
+      </div>
+      <button class="btn-primary" style="width:auto;" id="buyBulb">${icon('coin',14)} ${BULB_COST}</button>
+    </div>
+    <div class="glass card">
+      <div class="row"><span>Koin kamu</span><b>${CURRENT.coins}</b></div>
+      <div class="row"><span>Lampu dimiliki</span><b>${CURRENT.bulbs}</b></div>
+    </div>
+  `;
+  document.getElementById('buyBulb').onclick = async ()=>{
+    if(CURRENT.coins < BULB_COST){ showToast('Koin tidak cukup!', 'err'); return; }
+    CURRENT.coins -= BULB_COST;
+    CURRENT.bulbs += 1;
+    await saveUser(CURRENT);
+    showToast('Berhasil membeli 1 lampu Idea', 'gold');
+    refreshTopbar();
+    renderShop(document.getElementById('content'));
+  };
+}
+
+function refreshTopbar(){
+  if(!CURRENT) return;
+  const coinVal = document.getElementById('coinVal');
+  const bulbVal = document.getElementById('bulbVal');
+  if(coinVal){ coinVal.textContent = CURRENT.coins; bumpPill('coinPill'); }
+  if(bulbVal){ bulbVal.textContent = CURRENT.bulbs; bumpPill('bulbPill'); }
+  const topLvl = document.querySelector('.topbar .small');
+  if(topLvl) topLvl.textContent = `Level ${CURRENT.level}`;
+}
+function bumpPill(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+}
+
+boot();
+</script>
+</body>
+</html>
