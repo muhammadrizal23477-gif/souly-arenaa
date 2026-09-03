@@ -328,6 +328,175 @@ async function storeSet(key, value, shared){
   return true;
 }
 
+/* ===================== IDENTITAS PERANGKAT & APPROVAL LOGIN =====================
+   Setiap perangkat/browser menyimpan ID acak sendiri secara lokal (tidak ikut
+   pindah akun). Saat ada yang login dari perangkat yang belum dipercaya,
+   permintaan disimpan di data akun (shared) lalu pemilik akun yang sedang
+   login di perangkat lain akan melihat popup untuk Izinkan/Tolak. Perangkat
+   pertama yang berhasil login ke sebuah akun otomatis dipercaya (supaya tidak
+   ada yang terkunci saat belum ada perangkat lain yang bisa menyetujui). */
+function getDeviceId(){
+  const KEY = 'soulyarena:deviceId';
+  let id = null;
+  try{ id = localStorage.getItem(KEY); }catch(e){}
+  if(!id){
+    id = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,10);
+    try{ localStorage.setItem(KEY, id); }catch(e){}
+  }
+  return id;
+}
+function deviceLabel(){
+  const ua = navigator.userAgent || '';
+  let os = 'Perangkat';
+  if(/Android/i.test(ua)) os = 'Android';
+  else if(/iPhone|iPad|iPod/i.test(ua)) os = 'iOS';
+  else if(/Windows/i.test(ua)) os = 'Windows';
+  else if(/Mac OS/i.test(ua)) os = 'Mac';
+  else if(/Linux/i.test(ua)) os = 'Linux';
+  let browser = 'Browser';
+  if(/Edg\//i.test(ua)) browser = 'Edge';
+  else if(/OPR\//i.test(ua)) browser = 'Opera';
+  else if(/Chrome\//i.test(ua)) browser = 'Chrome';
+  else if(/Firefox\//i.test(ua)) browser = 'Firefox';
+  else if(/Safari\//i.test(ua)) browser = 'Safari';
+  return browser + ' \u2022 ' + os;
+}
+function fmtTime(ts){
+  try{ return new Date(ts).toLocaleString('id-ID', {hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'}); }
+  catch(e){ return ''; }
+}
+
+let loginWatchTimer = null;
+let approvalModalOpen = false;
+function startLoginRequestWatcher(){
+  stopLoginRequestWatcher();
+  checkPendingLoginRequests();
+  loginWatchTimer = setInterval(checkPendingLoginRequests, 4000);
+}
+function stopLoginRequestWatcher(){
+  if(loginWatchTimer){ clearInterval(loginWatchTimer); loginWatchTimer = null; }
+}
+async function checkPendingLoginRequests(){
+  if(!CURRENT || approvalModalOpen) return;
+  try{
+    const fresh = await getUser(CURRENT.username);
+    if(!fresh || !Array.isArray(fresh.pendingLogins)) return;
+    const myDevId = getDeviceId();
+    const pending = fresh.pendingLogins.find(r=> r.status==='pending' && r.deviceId!==myDevId);
+    if(pending) showLoginApprovalModal(pending);
+  }catch(e){ /* diam-diam gagal, dicoba lagi di siklus berikutnya */ }
+}
+function showLoginApprovalModal(req){
+  if(approvalModalOpen || !CURRENT) return;
+  approvalModalOpen = true;
+  const wrap = document.createElement('div');
+  wrap.id = 'loginApprovalModal';
+  wrap.style.cssText = 'position:fixed;inset:0;background:rgba(5,5,15,0.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;';
+  wrap.innerHTML = `
+    <div class="glass card" style="max-width:340px;width:100%;margin:0;text-align:center;">
+      <div style="color:var(--gold);margin-bottom:6px;display:flex;justify-content:center;">${icon('key',34)}</div>
+      <h3 style="margin:0 0 6px;">Login Baru Terdeteksi</h3>
+      <p style="margin:0 0 4px;">Perangkat <b>${escapeHtml(req.label||'Tidak diketahui')}</b> mencoba masuk ke akun kamu (<b>${escapeHtml(CURRENT.username)}</b>).</p>
+      <p class="small" style="margin:0 0 16px;">${fmtTime(req.ts)}</p>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-ghost" id="denyLoginBtn" style="width:auto;flex:1;color:var(--danger);border-color:var(--danger);">Tolak</button>
+        <button class="btn-primary" id="allowLoginBtn" style="width:auto;flex:1;">Izinkan</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  const closeModal = ()=>{ wrap.remove(); approvalModalOpen = false; };
+  document.getElementById('allowLoginBtn').onclick = async ()=>{
+    document.getElementById('allowLoginBtn').disabled = true;
+    try{
+      const u = await getUser(CURRENT.username);
+      if(u){
+        if(!Array.isArray(u.pendingLogins)) u.pendingLogins = [];
+        if(!Array.isArray(u.trustedDevices)) u.trustedDevices = [];
+        const idx = u.pendingLogins.findIndex(r=>r.id===req.id);
+        if(idx>=0) u.pendingLogins[idx].status = 'approved';
+        if(!u.trustedDevices.some(d=>d.id===req.deviceId)){
+          u.trustedDevices.push({id:req.deviceId, label:req.label, addedAt:Date.now()});
+        }
+        u.pendingLogins = u.pendingLogins.filter(r=> r.status==='pending' || (Date.now()-r.ts) < 5*60*1000);
+        await saveUser(u);
+        if(CURRENT && u.username===CURRENT.username) CURRENT = u;
+        showToast('Perangkat diizinkan masuk','ok');
+      }
+    }catch(e){ showToast('Gagal menyimpan persetujuan','err'); }
+    closeModal();
+  };
+  document.getElementById('denyLoginBtn').onclick = async ()=>{
+    document.getElementById('denyLoginBtn').disabled = true;
+    try{
+      const u = await getUser(CURRENT.username);
+      if(u && Array.isArray(u.pendingLogins)){
+        const idx = u.pendingLogins.findIndex(r=>r.id===req.id);
+        if(idx>=0) u.pendingLogins[idx].status = 'denied';
+        u.pendingLogins = u.pendingLogins.filter(r=> r.status==='pending' || (Date.now()-r.ts) < 5*60*1000);
+        await saveUser(u);
+      }
+      showToast('Login perangkat lain ditolak','ok');
+    }catch(e){ showToast('Gagal menyimpan penolakan','err'); }
+    closeModal();
+  };
+}
+function pollMyLoginRequest(username, requestId, handlers){
+  const startedAt = Date.now();
+  const TIMEOUT_MS = 120000;
+  const timer = setInterval(async ()=>{
+    if(Date.now()-startedAt > TIMEOUT_MS){
+      clearInterval(timer);
+      handlers.onTimeout && handlers.onTimeout();
+      return;
+    }
+    try{
+      const u = await getUser(username);
+      const req = (u && Array.isArray(u.pendingLogins)) ? u.pendingLogins.find(r=>r.id===requestId) : null;
+      if(req && req.status==='approved'){
+        clearInterval(timer);
+        handlers.onApproved && handlers.onApproved(u);
+      } else if(req && req.status==='denied'){
+        clearInterval(timer);
+        handlers.onDenied && handlers.onDenied();
+      } else if(!req){
+        clearInterval(timer);
+        handlers.onDenied && handlers.onDenied();
+      }
+    }catch(e){ /* coba lagi di siklus berikutnya */ }
+  }, 3000);
+  return timer;
+}
+function renderWaitingApproval(username, requestId, onApproved, onDenied){
+  const card = document.getElementById('authCard');
+  if(!card) return;
+  card.innerHTML = `
+    <div style="text-align:center;padding:6px 0;">
+      <span class="spinner" style="width:26px;height:26px;margin-bottom:14px;display:inline-block;"></span>
+      <h3 style="margin:0 0 8px;">Menunggu Persetujuan</h3>
+      <p class="small" style="margin:0 0 18px;">Buka Souly Arena di perangkat yang sudah login ke akun ini, lalu izinkan login untuk melanjutkan.</p>
+      <button class="btn-ghost" id="cancelWaitBtn" style="width:100%;">Batal</button>
+    </div>`;
+  let done = false;
+  const timer = pollMyLoginRequest(username, requestId, {
+    onApproved: (u)=>{ if(done) return; done = true; showToast('Login disetujui!','ok'); onApproved(u); },
+    onDenied: ()=>{ if(done) return; done = true; showToast('Login ditolak oleh pemilik akun.','err'); onDenied(); },
+    onTimeout: ()=>{ if(done) return; done = true; showToast('Permintaan login kedaluwarsa.','err'); onDenied(); }
+  });
+  document.getElementById('cancelWaitBtn').onclick = async ()=>{
+    if(done) return; done = true;
+    clearInterval(timer);
+    try{
+      const u = await getUser(username);
+      if(u && Array.isArray(u.pendingLogins)){
+        const idx = u.pendingLogins.findIndex(r=>r.id===requestId);
+        if(idx>=0) u.pendingLogins[idx].status = 'denied';
+        await saveUser(u);
+      }
+    }catch(e){}
+    onDenied();
+  };
+}
+
 async function getUser(username){
   const raw = await storeGet('users:'+username, true);
   if(!raw) return null;
@@ -337,10 +506,14 @@ async function saveUser(u){
   return await storeSet('users:'+u.username, JSON.stringify(u), true);
 }
 async function ensureAdmin(){
-  const existing = await getUser('souly');
-  if(!existing){
-    await saveUser(newUser('souly','souly123'));
-  }
+  let admin = await getUser('souly');
+  if(!admin){ admin = newUser('souly','souly123'); }
+  // Akun admin utama selalu koin & lampu Idea unlimited, dan level 99 (MAX).
+  admin.level = MAX_LEVEL;
+  admin.xp = 0;
+  if(!Array.isArray(admin.trustedDevices)) admin.trustedDevices = [];
+  if(!Array.isArray(admin.pendingLogins)) admin.pendingLogins = [];
+  await saveUser(admin);
 }
 const AVATAR_COLORS = ['#6ee7ff','#a78bfa','#f472b6','#fbbf24','#34d399','#fb7185','#38bdf8','#c084fc'];
 function newUser(username,password){
@@ -350,14 +523,16 @@ function newUser(username,password){
     level:1, xp:0, coins:20, bulbs:1,
     tttLevel:1, tttWins:0, tttDifficulty:0,
     quizLevel:1, quizWins:0, quizDifficulty:0,
-    usedQuizIds: [],
+    usedQuizIds: [], usedQuizTexts: [],
     aiUsesDate: todayStr(), aiUsesToday:0, aiLimitBonus:0,
+    trustedDevices: [], pendingLogins: [],
     createdAt: Date.now()
   };
 }
 const ADMIN_USERNAME = 'souly';
 function isAdminUser(u){ return !!u && u.username === ADMIN_USERNAME; }
-function aiDailyLimit(u){ return AI_DAILY_BASE + (u.aiLimitBonus||0); }
+function aiDailyLimit(u){ return isAdminUser(u) ? 999999 : (AI_DAILY_BASE + (u.aiLimitBonus||0)); }
+function dispNum(u, n){ return isAdminUser(u) ? '\u221e' : n; } // \u221e = simbol infinity (∞) khusus akun admin
 function avatarInitials(name){ return (name||'?').trim().slice(0,2).toUpperCase(); }
 function avatarSvg(user, size){
   size = size || 40;
@@ -483,7 +658,7 @@ const QUIZ_BANK = [
   {id:20,d:4,q:"Bahasa resmi PBB tidak termasuk?",o:["Inggris","Mandarin","Jerman","Arab"],a:2},
 ];
 
-function pickQuizQuestion(){
+function pickQuizQuestionFromBank(){
   const used = CURRENT.usedQuizIds || [];
   const targetD = (CURRENT.quizDifficulty||0) + 1; // 0..3 -> 1..4
   let pool = QUIZ_BANK.filter(q => !used.includes(q.id) && q.d === targetD);
@@ -494,6 +669,45 @@ function pickQuizQuestion(){
     if(pool.length === 0) pool = QUIZ_BANK.slice();
   }
   return pool[Math.floor(Math.random()*pool.length)];
+}
+
+/* Soal quiz tak terbatas: dibuat oleh AI di server, jadi tiap pengguna bisa
+   dapat soal baru terus-menerus dan tidak akan mengulang soal yang sudah
+   pernah dijawab (dicek lewat riwayat teks soal per akun). Bank soal statis
+   di atas cuma dipakai sebagai cadangan kalau koneksi ke AI gagal. */
+async function fetchAiQuizQuestion(difficulty){
+  const avoid = (CURRENT.usedQuizTexts || []).slice(-25);
+  const res = await fetch('/api/quiz', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ difficulty: difficulty + 1, avoid })
+  });
+  if(!res.ok){
+    let msg = 'Gagal memuat soal AI';
+    try{ const d = await res.json(); if(d && d.error) msg = d.error; }catch(_){}
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  return {
+    id: 'ai-' + Date.now() + '-' + Math.random().toString(36).slice(2,8),
+    d: difficulty + 1, q: data.question, o: data.options, a: data.answerIndex,
+    source: 'ai'
+  };
+}
+
+async function pickQuizQuestion(){
+  const diff = CURRENT.quizDifficulty || 0;
+  CURRENT.usedQuizTexts = CURRENT.usedQuizTexts || [];
+  for(let attempt=0; attempt<2; attempt++){
+    try{
+      const q = await fetchAiQuizQuestion(diff);
+      const norm = q.q.trim().toLowerCase();
+      if(!CURRENT.usedQuizTexts.includes(norm)) return q;
+    }catch(e){
+      break;
+    }
+  }
+  return pickQuizQuestionFromBank();
 }
 
 /* ===================== TIC TAC TOE AI ===================== */
@@ -578,7 +792,7 @@ function renderAuth(){
       <div class="logo">${icon('gem',40)}</div>
       <div class="brand">SOULY ARENA</div>
       <div class="tagline">Main, kumpulkan XP, naik level.</div>
-      <div class="glass card">
+      <div class="glass card" id="authCard">
         <div id="authTitle" style="font-weight:800;font-size:18px;margin-bottom:14px;">Masuk</div>
         <input id="u" placeholder="Username" autocomplete="username">
         <div class="pwd-wrap">
@@ -628,10 +842,12 @@ function renderAuth(){
         const exist = await getUser(username);
         if(exist){ err.textContent = 'Username sudah dipakai.'; btn.disabled=false; btn.textContent='Daftar'; return; }
         const u = newUser(username, password);
+        u.trustedDevices = [{id:getDeviceId(), label:deviceLabel(), addedAt:Date.now()}];
         const ok = await saveUser(u);
         if(!ok){ err.textContent = 'Gagal menyimpan akun, coba lagi.'; btn.disabled=false; btn.textContent='Daftar'; return; }
         CURRENT = u;
         VIEW = 'home';
+        startLoginRequestWatcher();
         showToast('Akun berhasil dibuat!','ok');
         render();
       } else {
@@ -641,11 +857,38 @@ function renderAuth(){
         if(u.tttDifficulty === undefined) u.tttDifficulty = 0;
         if(u.quizDifficulty === undefined) u.quizDifficulty = 0;
         if(u.avatarColor === undefined) u.avatarColor = AVATAR_COLORS[0];
-        CURRENT = u;
-        VIEW = 'home';
-        resetAiDailyIfNeeded();
-        showToast('Selamat datang, '+u.username+'!','ok');
-        render();
+        if(!Array.isArray(u.trustedDevices)) u.trustedDevices = [];
+        if(!Array.isArray(u.pendingLogins)) u.pendingLogins = [];
+
+        const finishLogin = (userObj)=>{
+          CURRENT = userObj;
+          VIEW = 'home';
+          resetAiDailyIfNeeded();
+          startLoginRequestWatcher();
+          showToast('Selamat datang, '+userObj.username+'!','ok');
+          render();
+        };
+
+        const devId = getDeviceId();
+        const isTrusted = u.trustedDevices.some(d=>d.id===devId);
+
+        if(isTrusted || u.trustedDevices.length === 0){
+          // Perangkat sudah dipercaya sebelumnya, atau ini perangkat pertama
+          // yang login ke akun ini (belum ada satu pun perangkat terdaftar)
+          // sehingga otomatis dipercaya tanpa perlu approval.
+          if(!isTrusted) u.trustedDevices.push({id:devId, label:deviceLabel(), addedAt:Date.now()});
+          await saveUser(u);
+          finishLogin(u);
+          return;
+        }
+
+        // Perangkat belum dikenal -> kirim permintaan izin ke pemilik akun
+        // yang sedang login di perangkat lain, lalu tampilkan layar menunggu.
+        const requestId = 'req_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+        u.pendingLogins.push({id:requestId, deviceId:devId, label:deviceLabel(), ts:Date.now(), status:'pending'});
+        const savedReq = await saveUser(u);
+        if(!savedReq){ err.textContent = 'Gagal mengirim permintaan login, coba lagi.'; btn.disabled=false; btn.textContent='Masuk'; return; }
+        renderWaitingApproval(username, requestId, finishLogin, renderAuth);
       }
     }catch(e){
       console.error(e);
@@ -675,8 +918,8 @@ function renderShell(){
         </div>
       </div>
       <div class="hstat">
-        <div class="pill glass-strong" id="coinPill">${icon('coin',14)}<span id="coinVal">${CURRENT.coins}</span></div>
-        <div class="pill glass-strong" id="bulbPill">${icon('bulb',14)}<span id="bulbVal">${CURRENT.bulbs}</span></div>
+        <div class="pill glass-strong" id="coinPill">${icon('coin',14)}<span id="coinVal">${dispNum(CURRENT,CURRENT.coins)}</span></div>
+        <div class="pill glass-strong" id="bulbPill">${icon('bulb',14)}<span id="bulbVal">${dispNum(CURRENT,CURRENT.bulbs)}</span></div>
         <button class="theme-toggle" id="themeBtnShell">${icon(THEME==='dark'?'sun':'moon',16)}</button>
       </div>
     </div>
@@ -772,8 +1015,8 @@ function renderProfile(c){
     <div class="glass card">
       <div class="row"><span>Level</span><b>${CURRENT.level} / ${MAX_LEVEL}</b></div>
       <div class="row"><span>XP</span><b>${CURRENT.xp} / ${xpNeeded(CURRENT.level)}</b></div>
-      <div class="row"><span>Koin</span><b>${CURRENT.coins}</b></div>
-      <div class="row"><span>Lampu Idea</span><b>${CURRENT.bulbs}</b></div>
+      <div class="row"><span>Koin</span><b>${dispNum(CURRENT,CURRENT.coins)}</b></div>
+      <div class="row"><span>Lampu Idea</span><b>${dispNum(CURRENT,CURRENT.bulbs)}</b></div>
       <div class="row"><span>Level Tic-Tac-Toe</span><b>${CURRENT.tttLevel} (${CURRENT.tttWins} menang)</b></div>
       <div class="row"><span>Level Quiz</span><b>${CURRENT.quizLevel} (${CURRENT.quizWins} menang)</b></div>
     </div>
@@ -846,6 +1089,7 @@ function renderProfile(c){
     };
   }
   document.getElementById('logoutBtn').onclick = ()=>{
+    stopLoginRequestWatcher();
     CURRENT = null; VIEW='login'; chatHistory=[]; render();
   };
   const giftBtn = document.getElementById('giftBtn');
@@ -990,22 +1234,19 @@ async function finishTtt(w){
 }
 
 /* ---------- QUIZ ---------- */
-let quizQ = null, quizStreak = 0, quizAnswered = false;
-function renderQuiz(c){
-  quizQ = pickQuizQuestion();
+let quizQ = null, quizStreak = 0, quizAnswered = false, quizRenderToken = 0;
+async function renderQuiz(c){
   quizAnswered = false;
+  const myToken = ++quizRenderToken;
   c.innerHTML = `
     <div class="glass card">
       <div class="row"><h3>Quiz</h3><span class="small">Level ${CURRENT.quizLevel} · Beruntun: ${quizStreak}</span></div>
       <div class="small">Mode tantangan</div>
       ${renderDiffBar('quizDiffBar','quizDiffPill', CURRENT.quizDifficulty||0)}
-      <p style="font-size:16px;color:var(--text);font-weight:600;margin-top:10px;">${quizQ.q}</p>
-      <div id="opts" style="margin-top:12px;"></div>
-      <div class="row" style="margin-top:12px;">
-        <span class="small" id="aiHintInfo">${quizAiHintLabel()}</span>
-        <button class="btn-small btn-ghost" id="askAiQuiz">${icon('ai',14)} Tanya AI</button>
+      <div id="quizBody" style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:26px 0 10px;">
+        <span class="spinner"></span>
+        <span class="small">Menyiapkan soal baru...</span>
       </div>
-      <div id="quizAiHint"></div>
     </div>
   `;
   wireDiffBar('quizDiffBar','quizDiffPill', async (i)=>{
@@ -1014,6 +1255,21 @@ function renderQuiz(c){
     await saveUser(CURRENT);
     renderQuiz(document.getElementById('content'));
   });
+  const q = await pickQuizQuestion();
+  if(myToken !== quizRenderToken) return; // pengguna sudah pindah / ganti kesulitan, buang hasil ini
+  quizQ = q;
+  const body = document.getElementById('quizBody');
+  if(!body) return;
+  body.style.cssText = 'width:100%;';
+  body.innerHTML = `
+    <p style="font-size:16px;color:var(--text);font-weight:600;margin:0;width:100%;">${escapeHtml(quizQ.q)}</p>
+    <div id="opts" style="width:100%;"></div>
+    <div class="row" style="width:100%;">
+      <span class="small" id="aiHintInfo">${quizAiHintLabel()}</span>
+      <button class="btn-small btn-ghost" id="askAiQuiz">${icon('ai',14)} Tanya AI</button>
+    </div>
+    <div id="quizAiHint" style="width:100%;"></div>
+  `;
   const opts = document.getElementById('opts');
   quizQ.o.forEach((optText, idx)=>{
     const b = document.createElement('button');
@@ -1040,7 +1296,7 @@ async function askAiForQuiz(q, box, btn){
   }
   if(btn) btn.disabled = true;
   box.innerHTML = `<div class="bubble ai" style="margin-top:8px;"><span class="spinner"></span></div>`;
-  if(remaining > 0){ CURRENT.aiUsesToday++; } else { CURRENT.bulbs--; }
+  if(!isAdminUser(CURRENT)){ if(remaining > 0){ CURRENT.aiUsesToday++; } else { CURRENT.bulbs--; } }
   await saveUser(CURRENT);
   refreshTopbar();
   const info = document.getElementById('aiHintInfo');
@@ -1058,7 +1314,14 @@ async function answerQuiz(idx, btn, opts){
   if(quizAnswered) return;
   quizAnswered = true;
   CURRENT.usedQuizIds = CURRENT.usedQuizIds || [];
-  CURRENT.usedQuizIds.push(quizQ.id);
+  CURRENT.usedQuizTexts = CURRENT.usedQuizTexts || [];
+  if(quizQ.source === 'ai'){
+    const norm = quizQ.q.trim().toLowerCase();
+    if(!CURRENT.usedQuizTexts.includes(norm)) CURRENT.usedQuizTexts.push(norm);
+    if(CURRENT.usedQuizTexts.length > 300) CURRENT.usedQuizTexts = CURRENT.usedQuizTexts.slice(-300);
+  } else {
+    CURRENT.usedQuizIds.push(quizQ.id);
+  }
   const correct = idx === quizQ.a;
   const diff = CURRENT.quizDifficulty || 0;
   Array.from(opts.children).forEach((el,i)=>{
@@ -1168,8 +1431,10 @@ async function sendChat(input, log){
   log.appendChild(typingEl);
   log.scrollTop = log.scrollHeight;
 
-  if(remaining > 0){ CURRENT.aiUsesToday++; }
-  else { CURRENT.bulbs--; }
+  if(!isAdminUser(CURRENT)){
+    if(remaining > 0){ CURRENT.aiUsesToday++; }
+    else { CURRENT.bulbs--; }
+  }
   await saveUser(CURRENT);
   refreshTopbar();
   if(VIEW==='ai'){
@@ -1205,13 +1470,15 @@ function renderShop(c){
       <button class="btn-primary" style="width:auto;" id="buyBulb">${icon('coin',14)} ${BULB_COST}</button>
     </div>
     <div class="glass card">
-      <div class="row"><span>Koin kamu</span><b>${CURRENT.coins}</b></div>
-      <div class="row"><span>Lampu dimiliki</span><b>${CURRENT.bulbs}</b></div>
+      <div class="row"><span>Koin kamu</span><b>${dispNum(CURRENT,CURRENT.coins)}</b></div>
+      <div class="row"><span>Lampu dimiliki</span><b>${dispNum(CURRENT,CURRENT.bulbs)}</b></div>
     </div>
   `;
   document.getElementById('buyBulb').onclick = async ()=>{
-    if(CURRENT.coins < BULB_COST){ showToast('Koin tidak cukup!', 'err'); return; }
-    CURRENT.coins -= BULB_COST;
+    if(!isAdminUser(CURRENT)){
+      if(CURRENT.coins < BULB_COST){ showToast('Koin tidak cukup!', 'err'); return; }
+      CURRENT.coins -= BULB_COST;
+    }
     CURRENT.bulbs += 1;
     await saveUser(CURRENT);
     showToast('Berhasil membeli 1 lampu Idea', 'gold');
@@ -1224,8 +1491,8 @@ function refreshTopbar(){
   if(!CURRENT) return;
   const coinVal = document.getElementById('coinVal');
   const bulbVal = document.getElementById('bulbVal');
-  if(coinVal){ coinVal.textContent = CURRENT.coins; bumpPill('coinPill'); }
-  if(bulbVal){ bulbVal.textContent = CURRENT.bulbs; bumpPill('bulbPill'); }
+  if(coinVal){ coinVal.textContent = dispNum(CURRENT,CURRENT.coins); bumpPill('coinPill'); }
+  if(bulbVal){ bulbVal.textContent = dispNum(CURRENT,CURRENT.bulbs); bumpPill('bulbPill'); }
   const topLvl = document.querySelector('.topbar .small');
   if(topLvl) topLvl.textContent = `Level ${CURRENT.level}`;
 }
