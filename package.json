@@ -1,7 +1,7 @@
 {
   "name": "souly-arena",
-  "version": "1.2.0",
-  "description": "Souly Arena - game mini + Chat AI, siap dipakai semua orang tanpa API key sendiri",
+  "version": "1.4.0",
+  "description": "Souly Arena - game mini + Chat AI + Studio Foto AI, siap dipakai semua orang tanpa API key sendiri",
   "main": "server.js",
   "engines": {
     "node": ">=18"
